@@ -82,6 +82,15 @@
       }
     },
     {
+      "sync": true
+    },
+    {
+      "talk_page": {
+        "method": "GET",
+        "path": "/api/plugins"
+      }
+    },
+    {
       "chat": "call notes.list-notes {}"
     }
   ]

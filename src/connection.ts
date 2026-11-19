@@ -53,13 +53,14 @@ export interface Connections extends Identity {
   find(credentials: Credentials): Promise<Connection | null>;
   /**
    * A Host asks over HTTP. Like `request`, and also returns a claim secret
-   * that only the Host knows, to fetch its token once approved.
+   * that only the Host knows, to fetch its token once approved. The request
+   * expires if nobody approves it in time; null when too many are waiting.
    */
   pair(
     host: string,
     principal: Principal,
     effects: Effect[],
-  ): Promise<{ connection: Connection; claim: string }>;
+  ): Promise<{ connection: Connection; claim: string } | null>;
   /**
    * The Host fetches its token with its claim secret: the token once the
    * Connection is approved, "waiting" before, null if refused or already claimed.

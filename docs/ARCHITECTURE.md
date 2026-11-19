@@ -117,6 +117,7 @@ Two stores ship. `memoryStore()` is in the root entry point; its transaction wor
 interface AgentRuntime {
   start(actions: ActionSource[]): Promise<void>;
   install(actions: ActionSource): Promise<void>;
+  uninstall(actions: ActionSource): Promise<void>;
   submit(to: ConversationId, input: Input, as: Principal): Promise<RunId>;
   watch(to: ConversationId, on: (view: ConversationView) => void): Unwatch;
   resume(call: CallId, outcome: Outcome): Promise<void>;
@@ -343,10 +344,13 @@ The App that owns the Actions:
 - `POST /pair` with `{ host, effects }` makes a Connection in `pairing` for the App's owner and answers `{ id, claim }`. The claim secret goes only to the Host that asked; its hash is stored.
 - The person approves or revokes on the App's page: `GET /api/connections`, `POST /api/connections/:id/approve`, `POST /api/connections/:id/revoke`.
 - `POST /pair/:id/claim` with `{ claim }` answers 202 while the Connection waits, the token once after approval (HTTP 200), and 403 otherwise. A token is claimed once; the token `approve` made is replaced, so nobody else has seen it.
+- `/pair` is open to anyone, so it is bounded. A pairing request expires after 10 minutes and is deleted. At most 5 may wait at once; more are refused with HTTP 429. The host name the person sees is 1 to 60 letters, digits, spaces, dots, dashes or underscores, and is shown as text; anything else is refused with HTTP 400. A claim that is wrong, expired, refused or already used gets the same 403 and reveals nothing.
 
 The Host, started with `connect` (the example reads `KIT_CONNECT`, a comma-separated list of MCP endpoints):
 
 - At first start it asks each App to pair and stores the claim secret. Every `syncEvery` (10 seconds) it claims the token, then installs every Domain that App serves as a Plugin: into its pipeline, and into the running Runtime with `runtime.install`. It stores the token as given, because it needs it to call.
-- Each sync fetches the Contracts again. A new minor or patch version replaces the Plugin. A new major version takes the Plugin out, and its Calls are refused, until the person accepts it with `POST /api/plugins/:domain/accept`. `GET /api/plugins` lists where each pairing stands.
+- Each sync fetches the Contracts again. A new minor or patch version replaces the Plugin. A new major version takes the Plugin out until the person accepts it with `POST /api/plugins/:domain/accept`. `GET /api/plugins` lists where each pairing stands.
+- When the other App refuses the token (HTTP 401), the Connection was revoked: the Host marks it refused and takes its Plugins out. An App that cannot be reached is tried again at the next sync.
+- A Plugin taken out is also taken out of the Runtime with `runtime.uninstall`, so the agent is not offered Actions it cannot call; accepting a new version installs it again.
 
-`expect/pairing/pair-upgrade-revoke` runs it between two Apps: pairing, approval, a Call by the Host's agent, a minor upgrade, a major upgrade held back and then accepted, and a revoked Connection.
+`expect/pairing/pair-upgrade-revoke` runs it between two Apps: pairing, approval, a Call by the Host's agent, a minor upgrade, a major upgrade held back (the agent's Call never reaches the pipeline) and then accepted, and a revoked Connection. `expect/pairing/limits` shows the cap, the host name check, expiry and single-use claims.

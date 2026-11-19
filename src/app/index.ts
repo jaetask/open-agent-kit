@@ -86,7 +86,7 @@ export type App = {
 export async function createApp(options: AppOptions): Promise<App> {
   const db = new DatabaseSync(options.file);
   const store = sqliteStore(db);
-  const connections = sqliteConnections(db);
+  const connections = sqliteConnections(db, options.now);
   const remotes = await Promise.all((options.plugins ?? []).map((p) => remoteSource(p)));
   const plugins: Plugin[] = [];
   for (const source of remotes) plugins.push({ contract: await source.contract(), source });
@@ -97,6 +97,9 @@ export async function createApp(options: AppOptions): Promise<App> {
     log,
     onInstall: async (plugin) => {
       await options.runtime?.install(pluginSource(plugin, calls));
+    },
+    onUninstall: async (plugin) => {
+      await options.runtime?.uninstall(pluginSource(plugin, calls));
     },
   });
   const sessions = sqliteSessions(db, options.owner ?? { id: "owner" }, options.now);
@@ -173,13 +176,17 @@ export async function createApp(options: AppOptions): Promise<App> {
       };
       const effects = Array.isArray(body.effects) ? body.effects : [];
       const valid = effects.every((e) => EFFECTS.includes(e as Effect));
-      if (typeof body.host !== "string" || !body.host || body.host.length > 100 || !valid) {
+      // The name the person sees: short, and only letters, digits, spaces, dots, dashes, underscores.
+      const host = typeof body.host === "string" ? body.host : "";
+      if (!/^[\p{L}\p{N} ._-]{1,60}$/u.test(host) || !valid) {
         return new Response("A pairing request needs a host name and a list of Effects.", {
           status: 400,
         });
       }
-      const { connection, claim } = await connections.pair(body.host, owner, effects as Effect[]);
-      log(`${body.host} asks to pair. Approve it on this App's page.`);
+      const paired = await connections.pair(host, owner, effects as Effect[]);
+      if (!paired) return new Response("Too many pairing requests are waiting.", { status: 429 });
+      const { connection, claim } = paired;
+      log(`${host} asks to pair. Approve it on this App's page.`);
       return Response.json({ id: connection.id, claim });
     }
     const claimed = pathname.match(/^\/pair\/([^/]+)\/claim$/);

@@ -55,10 +55,18 @@ export function sqliteStore(db: DatabaseSync): CallStore<DatabaseSync> {
 
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
-/** Connections in `db`, in the table kit_connections. Tokens are stored as SHA-256 hashes. */
-export function sqliteConnections(db: DatabaseSync): Connections {
+/** How long a pairing request over HTTP waits for the person, and how many may wait at once. */
+export const PAIRING_MINUTES = 10;
+export const PAIRING_LIMIT = 5;
+
+/**
+ * Connections in `db`, in the table kit_connections. Tokens and claim
+ * secrets are stored as SHA-256 hashes. A pairing request from `pair`
+ * expires after PAIRING_MINUTES and is deleted.
+ */
+export function sqliteConnections(db: DatabaseSync, now: () => number = Date.now): Connections {
   db.exec(
-    "CREATE TABLE IF NOT EXISTS kit_connections (id TEXT PRIMARY KEY, record TEXT NOT NULL, token_hash TEXT UNIQUE, claim_hash TEXT, claimed INTEGER NOT NULL DEFAULT 0)",
+    "CREATE TABLE IF NOT EXISTS kit_connections (id TEXT PRIMARY KEY, record TEXT NOT NULL, token_hash TEXT UNIQUE, claim_hash TEXT, claimed INTEGER NOT NULL DEFAULT 0, expires INTEGER)",
   );
   const byId = db.prepare("SELECT record FROM kit_connections WHERE id = ?");
   const byToken = db.prepare("SELECT record FROM kit_connections WHERE token_hash = ?");
@@ -66,7 +74,18 @@ export function sqliteConnections(db: DatabaseSync): Connections {
     "INSERT INTO kit_connections (id, record) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET record = excluded.record",
   );
   const setToken = db.prepare("UPDATE kit_connections SET token_hash = ? WHERE id = ?");
-  const setClaim = db.prepare("UPDATE kit_connections SET claim_hash = ? WHERE id = ?");
+  const setClaim = db.prepare(
+    "UPDATE kit_connections SET claim_hash = ?, expires = ? WHERE id = ?",
+  );
+  const dropExpired = db.prepare(
+    "DELETE FROM kit_connections WHERE expires <= ? AND json_extract(record, '$.state') = 'pairing'",
+  );
+  const pending = db.prepare(
+    "SELECT count(*) AS n FROM kit_connections WHERE expires IS NOT NULL AND json_extract(record, '$.state') = 'pairing'",
+  );
+  const tidy = () => {
+    dropExpired.run(now());
+  };
   const claimOf = db.prepare("SELECT claim_hash, claimed FROM kit_connections WHERE id = ?");
   const setClaimed = db.prepare("UPDATE kit_connections SET claimed = 1 WHERE id = ?");
   const all = db.prepare("SELECT record FROM kit_connections ORDER BY rowid");
@@ -98,16 +117,20 @@ export function sqliteConnections(db: DatabaseSync): Connections {
   return {
     request,
     approve: async (id) => {
+      tidy();
       move(get(id), "APPROVE");
       return mint(id);
     },
     pair: async (host, principal, effects) => {
+      tidy();
+      if ((pending.get() as { n: number }).n >= PAIRING_LIMIT) return null;
       const connection = await request(host, principal, effects);
       const claim = randomBytes(24).toString("base64url");
-      setClaim.run(hash(claim), connection.id);
+      setClaim.run(hash(claim), now() + PAIRING_MINUTES * 60_000, connection.id);
       return { connection, claim };
     },
     claim: async (id, claim) => {
+      tidy();
       const row = claimOf.get(id) as { claim_hash: string | null; claimed: number } | undefined;
       const connection = read(byId.get(id));
       if (!row?.claim_hash || !connection || row.claimed) return null;
@@ -117,9 +140,15 @@ export function sqliteConnections(db: DatabaseSync): Connections {
       setClaimed.run(id);
       return mint(id); // replaces the token approve() made, which nobody has seen
     },
-    list: async () => all.all().map((row) => read(row) as Connection),
+    list: async () => {
+      tidy();
+      return all.all().map((row) => read(row) as Connection);
+    },
     revoke: async (id) => move(get(id), "REVOKE"),
-    get: async (id) => read(byId.get(id)),
+    get: async (id) => {
+      tidy();
+      return read(byId.get(id));
+    },
     find,
     authenticate: async (credentials) => (await find(credentials))?.principal ?? null,
   };

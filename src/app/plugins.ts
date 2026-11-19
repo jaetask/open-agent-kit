@@ -43,6 +43,8 @@ export function hostPlugins(
     log: (line: string) => void;
     /** Called when a Plugin is installed or replaced. */
     onInstall: (plugin: Plugin) => Promise<void>;
+    /** Called when a Plugin is taken out: held back by a major version, or its Connection revoked. */
+    onUninstall: (plugin: Plugin) => Promise<void>;
   },
 ): HostPlugins {
   db.exec("CREATE TABLE IF NOT EXISTS kit_plugins (url TEXT PRIMARY KEY, record TEXT NOT NULL)");
@@ -90,8 +92,7 @@ export function hostPlugins(
         row.domains[domain] = { approved: known.approved, offered: contract.version };
         save(row);
         await source.close();
-        await current?.close();
-        installed.delete(domain);
+        if (current) await remove(domain, current);
         continue;
       }
       if (current && current.contract.version === contract.version) {
@@ -107,14 +108,28 @@ export function hostPlugins(
     }
   };
 
+  const remove = async (domain: string, plugin: Plugin & { close(): Promise<void> }) => {
+    installed.delete(domain);
+    await options.onUninstall(plugin);
+    await plugin.close();
+  };
+
   const sync = async () => {
     for (const row of all()) {
       try {
         if (row.state === "pairing") await claim(row);
         const now = all().find((r) => r.url === row.url) as Row;
         if (now.state === "connected") await install(now);
-      } catch {
-        // The other App is unreachable: try again at the next sync.
+      } catch (error) {
+        if ((error as { status?: number }).status !== 401) continue; // unreachable: try again later
+        // The other App no longer accepts the token: the Connection was revoked.
+        const { token: _, ...rest } = row;
+        save({ ...rest, state: "refused" });
+        for (const domain of Object.keys(row.domains)) {
+          const plugin = installed.get(domain);
+          if (plugin) await remove(domain, plugin);
+        }
+        options.log(`${row.url} no longer accepts this App's Connection.`);
       }
     }
   };

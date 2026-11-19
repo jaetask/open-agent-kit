@@ -1,0 +1,84 @@
+{
+  "steps": [
+    {
+      "tasks_version": "1.0.0"
+    },
+    {
+      "pair": "host 1"
+    },
+    {
+      "pair": "host 2"
+    },
+    {
+      "pair": "host 3"
+    },
+    {
+      "pair": "host 4"
+    },
+    {
+      "pair": "host 5"
+    },
+    {
+      "pair": "host 6"
+    },
+    {
+      "pair": "<script>alert(1)</script>"
+    },
+    {
+      "pair": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "pair": ""
+    },
+    {
+      "tasks_page": {
+        "method": "GET",
+        "path": "/api/connections"
+      }
+    },
+    {
+      "claim": {
+        "pair": 1
+      }
+    },
+    {
+      "claim": {
+        "pair": 1,
+        "secret": "wrong"
+      }
+    },
+    {
+      "wait_minutes": 11
+    },
+    {
+      "tasks_page": {
+        "method": "GET",
+        "path": "/api/connections"
+      }
+    },
+    {
+      "claim": {
+        "pair": 1
+      }
+    },
+    {
+      "pair": "host 7"
+    },
+    {
+      "tasks_page": {
+        "method": "POST",
+        "path": "/api/connections/<connection 6>/approve"
+      }
+    },
+    {
+      "claim": {
+        "pair": 6
+      }
+    },
+    {
+      "claim": {
+        "pair": 6
+      }
+    }
+  ]
+}

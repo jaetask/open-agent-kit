@@ -41,6 +41,8 @@ export interface AgentRuntime {
   start(actions: ActionSource[]): Promise<void>;
   /** Adds or replaces an ActionSource after start, such as a Plugin approved later. */
   install(actions: ActionSource): Promise<void>;
+  /** Takes an ActionSource's Actions away: the agent is no longer offered them. */
+  uninstall(actions: ActionSource): Promise<void>;
   submit(to: ConversationId, input: Input, as: Principal): Promise<RunId>;
   watch(to: ConversationId, on: (view: ConversationView) => void): Unwatch;
   resume(call: CallId, outcome: Outcome): Promise<void>;

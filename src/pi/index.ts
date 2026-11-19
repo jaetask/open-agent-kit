@@ -180,6 +180,12 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
       registry.install(await extension(source));
     },
 
+    uninstall: async (source) => {
+      const { domain, actions } = await source.contract();
+      registry.uninstall(defineExtension({ name: domain }));
+      for (const action of actions) tools.delete(toolName(action.name));
+    },
+
     submit: async (to, input, as: Principal) => {
       const pi = await ensure(to);
       const conversation = await open().conversation(pi, context);

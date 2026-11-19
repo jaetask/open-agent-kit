@@ -20,14 +20,19 @@ type Step =
   | { tasks_page: { method: string; path: string } }
   | { talk_page: { method: string; path: string } }
   | { sync: true } // talk claims, installs and checks versions
-  | { chat: string };
+  | { chat: string }
+  | { wait_minutes: number }
+  | { pair: string } // a raw POST /pair to tasks with this host name
+  | { claim: { pair: number; secret?: string } }; // POST /pair/:id/claim for the nth raw pair
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
 
 export async function runPairing(input: string): Promise<string> {
   const { steps } = JSON.parse(input) as { steps: Step[] };
   const dir = mkdtempSync(join(tmpdir(), "kit-pairing-"));
-  const now = () => Date.parse("2026-01-01T00:00:00Z");
+  let clock = Date.parse("2026-01-01T00:00:00Z");
+  const now = () => clock;
+  const pairs: { id: string; claim: string }[] = [];
   const said: string[] = [];
   let tasks: App | undefined;
   let talk: App | undefined;
@@ -125,15 +130,62 @@ export async function runPairing(input: string): Promise<string> {
       } else if ("sync" in step) {
         await talk?.syncPlugins();
         lines.push(`${n} talk syncs its Plugins`);
+      } else if ("wait_minutes" in step) {
+        clock += step.wait_minutes * 60_000;
+        lines.push(`${n} ${step.wait_minutes} minutes pass`);
+      } else if ("pair" in step) {
+        const response = await fetch(`${tasksUrl}/pair`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ host: step.pair, effects: ["read"] }),
+        });
+        const text = await response.text();
+        if (response.ok) {
+          const pair = JSON.parse(text) as { id: string; claim: string };
+          pairs.push(pair);
+          clean(pair.id); // so later steps can name it <connection n>
+        }
+        const shown = response.ok ? `pair ${pairs.length}, with a claim secret` : text;
+        lines.push(
+          `${n} POST /pair as ${JSON.stringify(step.pair)} → HTTP ${response.status}: ${shown}`,
+        );
+      } else if ("claim" in step) {
+        const pair = pairs[step.claim.pair - 1] as { id: string; claim: string };
+        const response = await fetch(`${tasksUrl}/pair/${pair.id}/claim`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ claim: step.claim.secret ?? pair.claim }),
+        });
+        const text = await response.text();
+        const shown = response.status === 200 ? "a token" : text;
+        const which = step.claim.secret ? "a wrong secret" : "its secret";
+        lines.push(
+          `${n} claim pair ${step.claim.pair} with ${which} → HTTP ${response.status}: ${shown}`,
+        );
       } else {
-        const before = views.get("t1")?.messages.length ?? 0;
+        const asked = (views.get("t1")?.messages ?? []).filter((m) => m.from === "person").length;
         await talk?.runtime?.submit("t1", { text: step.chat }, { id: "owner" });
+        // This Input's messages: from its person message to the agent's answer.
+        const mine = () => {
+          const all = views.get("t1")?.messages ?? [];
+          const starts = all.flatMap((m, k) => (m.from === "person" ? [k] : []));
+          const from = starts[asked];
+          return from === undefined ? [] : all.slice(from);
+        };
         for (let k = 0; k < 400; k++) {
           await tick();
-          const v = views.get("t1");
-          if (v && v.status === "idle" && v.messages.length > before + 1) break;
+          if (views.get("t1")?.status === "idle" && mine().some((m) => m.from === "agent")) break;
         }
-        const added = (views.get("t1")?.messages ?? []).slice(before).map(describe);
+        const added = [];
+        for (const m of mine()) {
+          if (m.from !== "call") {
+            added.push(describe(m));
+            continue;
+          }
+          // Whether the Call reached talk's pipeline: an uninstalled Plugin is not offered at all.
+          const record = await talk?.store.get(m.call);
+          added.push(`${describe(m)} [talk's pipeline: ${record ? record.state : "never called"}]`);
+        }
         lines.push(`${n} in talk: ${JSON.stringify(step.chat)}`, ...added.map((m) => `   ${m}`));
       }
     }

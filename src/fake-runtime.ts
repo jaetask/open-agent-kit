@@ -104,6 +104,9 @@ export function fakeRuntime(plan: Plan): AgentRuntime {
     install: async (source) => {
       for (const action of (await source.contract()).actions) sources.set(action.name, source);
     },
+    uninstall: async (source) => {
+      for (const action of (await source.contract()).actions) sources.delete(action.name);
+    },
     submit: async (to, input, as) => {
       const c = open(to);
       c.runs += 1;
