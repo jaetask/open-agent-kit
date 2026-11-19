@@ -1,0 +1,67 @@
+{
+  "steps": [
+    {
+      "sign_in": "expect-setup-secret"
+    },
+    {
+      "ui": {
+        "id": "u1",
+        "action": "notes.list-notes",
+        "input": {}
+      }
+    },
+    {
+      "ui": {
+        "id": "u2",
+        "action": "notes.add-note",
+        "input": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "chat": {
+        "to": "t1",
+        "text": "call notes.add-note {\"text\":\"bread\"}\ncall notes.delete-note {\"id\":\"n1\"}"
+      }
+    },
+    {
+      "decide": {
+        "to": "t1",
+        "call": "t1-r1-c2",
+        "decision": "yes"
+      }
+    },
+    {
+      "sweep": true
+    },
+    {
+      "record": "u1"
+    },
+    {
+      "wait_days": 2
+    },
+    {
+      "sweep": true
+    },
+    {
+      "record": "u1"
+    },
+    {
+      "record": "u2"
+    },
+    {
+      "record": "t1-r1-c2"
+    },
+    {
+      "ui": {
+        "id": "u1",
+        "action": "notes.list-notes",
+        "input": {}
+      }
+    },
+    {
+      "record": "u1"
+    }
+  ]
+}

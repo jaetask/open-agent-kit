@@ -36,8 +36,10 @@ export type AppOptions = {
   /** How long a Hold waits, in milliseconds, and the clock. See createCalls. */
   holdFor?: number;
   now?: () => number;
-  /** How often to expire overdue Holds, in milliseconds. Defaults to one minute; 0 turns it off. */
+  /** How often to sweep (expire overdue Holds, forget old reads), in milliseconds. Defaults to one minute; 0 turns it off. */
   sweepEvery?: number;
+  /** How long records of succeeded read Calls are kept, in milliseconds. Defaults to one day. */
+  keepReadsFor?: number;
   /** The one person this App serves. Defaults to `{ id: "owner" }`. */
   owner?: Principal;
   /**
@@ -71,6 +73,11 @@ export type App = {
    * Runtime so a waiting conversation carries on. Returns the expired Outcomes.
    */
   sweepHolds(): Promise<Outcome[]>;
+  /**
+   * The App's sweep: expires overdue Holds, and forgets records of succeeded
+   * read Calls older than `keepReadsFor`. Runs every `sweepEvery`.
+   */
+  sweep(): Promise<{ expired: number; forgotten: number }>;
   /** Claims pairing tokens, installs approved Plugins and checks their Contract versions. */
   syncPlugins(): Promise<void>;
   /** Calls `listener` with every ChangeEvent; returns a function that stops it. */
@@ -222,8 +229,14 @@ export async function createApp(options: AppOptions): Promise<App> {
     }
     return expired;
   };
+  const keepReadsFor = options.keepReadsFor ?? 24 * 60 * 60 * 1000;
+  const sweep = async () => {
+    const expired = (await sweepHolds()).length;
+    const forgotten = await store.forgetReads(new Date(now() - keepReadsFor).toISOString());
+    return { expired, forgotten };
+  };
   const every = options.sweepEvery ?? 60_000;
-  const sweeper = every > 0 ? setInterval(() => void sweepHolds(), every) : undefined;
+  const sweeper = every > 0 ? setInterval(() => void sweep(), every) : undefined;
   sweeper?.unref();
 
   for (const url of options.connect ?? []) {
@@ -239,6 +252,7 @@ export async function createApp(options: AppOptions): Promise<App> {
   let http: Server | undefined;
   return {
     sweepHolds,
+    sweep,
     syncPlugins: () => host.sync(),
     db,
     store,

@@ -322,6 +322,10 @@ await app.listen(3120);
 - `runtime.conversationOf(call)` names the conversation a held Call belongs to. The Runtime records it when the Call is held and keeps it durably (pi-durable: in its session document); the pipeline and the Hold still know nothing of conversations.
 - `app.sweepHolds()` expires every Hold whose time has passed and gives each `expired` Outcome to the Runtime, so the conversation carries on. `createApp` runs it every minute (`sweepEvery`; 0 turns it off).
 
+### Keeping the store small
+
+Every Call is still stored by its id, and each record notes its Effect and when it ended. The App's sweep (`app.sweep()`, every `sweepEvery`) also forgets the records of succeeded read Calls once they are older than `keepReadsFor`, one day by default. Reads change nothing, so a retry of a forgotten read id simply runs again. Write and danger records, and every record that did not succeed, are kept: they are the App's audit trail. `expect/app/read-retention` shows a read record gone after two days, the write and danger records still there, and the old read id running again.
+
 ### Change events
 
 `createCalls` takes `onChange(event)`, called once for each Call that succeeds with Changes, after its Outcome is stored; a retry that returns the stored Outcome publishes nothing. A `ChangeEvent` is `{ call, changes }`. `createApp` publishes them on `app.onChange(listener)` and as server-sent events on `GET /events`: one `change` event per Call, with `data` `{ call, action, caller, changes }`, and a comment every 15 seconds. A page refetches what changed, whether the change came from the UI, the agent or a Plugin. `expect/app/change-events` reads the stream over HTTP while all three make Calls.

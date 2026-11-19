@@ -34,7 +34,9 @@ type Step =
   | { chat: { to: string; text: string } }
   | { decide: { to: string; call: string; decision: Decision } }
   | { restart: true }
-  | { wait_days: number };
+  | { wait_days: number }
+  | { sweep: true } // the App's sweep runs once
+  | { record: string }; // what the App's store holds for a Call id
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
 
@@ -218,6 +220,17 @@ export async function runApp(input: string): Promise<string> {
         });
         const outcome = (await response.json()) as { state: string };
         lines.push(`${n} the page decides ${call} ${decision} → ${outcome.state}`);
+      } else if ("sweep" in step) {
+        const { expired, forgotten } = await app.sweep();
+        lines.push(
+          `${n} the App sweeps: ${expired} Holds expired, ${forgotten} read records forgotten`,
+        );
+      } else if ("record" in step) {
+        const record = await app.store.get(step.record);
+        const shown = record
+          ? `${record.effect} ${record.state}, ${record.history.length} transitions`
+          : "none";
+        lines.push(`${n} the App's record of ${step.record}: ${shown}`);
       } else if ("wait_days" in step) {
         clock += step.wait_days * 24 * 60 * 60 * 1000;
         lines.push(`${n} ${step.wait_days} days pass`);

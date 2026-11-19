@@ -1,3 +1,4 @@
+import type { Effect } from "./action.js";
 import type { Call, CallId } from "./call.js";
 import type { CallState } from "./call-machine.js";
 import type { Outcome } from "./outcome.js";
@@ -10,6 +11,10 @@ export type CallRecord = {
   history: string[];
   /** Set once the Call is held or has ended. */
   outcome?: Outcome;
+  /** The Action's Effect, when the Action is known. */
+  effect?: Effect;
+  /** When the Call ended, as an ISO time. */
+  endedAt?: string;
 };
 
 /**
@@ -27,6 +32,12 @@ export interface CallStore<Data = unknown> {
   byConnection(connection: string): Promise<CallRecord[]>;
   /** Every held Call, oldest first; only those acting as `principal` when given. */
   held(principal?: string): Promise<CallRecord[]>;
+  /**
+   * Deletes the records of succeeded read Calls that ended before `before`
+   * (an ISO time). Returns how many. Reads change nothing, so a retry of a
+   * forgotten id runs again harmlessly; write and danger records are kept.
+   */
+  forgetReads(before: string): Promise<number>;
   /** Runs `work` outside a transaction. Used for read Actions. */
   read<T>(work: (data: Data) => Promise<T>): Promise<T>;
   /**
@@ -60,6 +71,17 @@ export function memoryStore(): CallStore<Map<string, unknown>> {
       [...records.values()]
         .map((json) => JSON.parse(json) as CallRecord)
         .filter((r) => r.state === "held" && (!principal || r.call.principal.id === principal)),
+    forgetReads: async (before) => {
+      let forgotten = 0;
+      for (const [id, json] of records) {
+        const r = JSON.parse(json) as CallRecord;
+        if (r.effect === "read" && r.state === "succeeded" && (r.endedAt ?? "") < before) {
+          records.delete(id);
+          forgotten += 1;
+        }
+      }
+      return forgotten;
+    },
     read: (work) => work(data),
     transact: async (work) => {
       const draft = structuredClone(data);

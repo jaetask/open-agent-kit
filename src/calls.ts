@@ -126,6 +126,7 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
   const ended = (record: CallRecord, event: CallEvent, outcome: Outcome) => {
     move(record, event);
     record.outcome = outcome;
+    if (outcome.state !== "held") record.endedAt = new Date(now()).toISOString();
     return outcome;
   };
 
@@ -281,6 +282,8 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     const record: CallRecord = { call, state: CALL_MACHINE.initial, history: [] };
     move(record, "START");
     const plugin = remoteOf(call.action);
+    const effect = plugin?.effect ?? actions.get(call.action)?.action.effect;
+    if (effect) record.effect = effect;
     if (plugin) {
       // The owning App validates and authorises; this App only gates.
       move(record, "VALID");
