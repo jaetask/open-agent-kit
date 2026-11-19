@@ -130,7 +130,7 @@ interface ActionSource {
 ```
 
 - `start` receives every ActionSource the agent may use, one per Domain or Plugin.
-- `submit` queues an Input; a conversation takes Inputs in order. It returns the RunId at once.
+- `submit` queues an Input; a conversation takes Inputs in order. It returns the RunId at once. A queued Input starts in the same step the previous run ends, so the conversation is not idle in between.
 - A Runtime makes each Call through `ActionSource.run` with the Caller `agent` and the id `<RunId>-c<n>`, so a rerun after a restart reuses the id and gets the stored Outcome.
 - A `held` Outcome leaves the conversation `waiting`. The App asks the person, calls `calls.decide`, and passes the final Outcome to `resume(call, outcome)`; the conversation then carries on.
 - `watch` calls `on` with the current `ConversationView` as soon as it has it, then after every change. A view has a `status` (`idle`, `running`, `waiting` or `stopped`) and its messages, oldest first: the person's text, the agent's text, and one entry per Call Outcome.
@@ -181,7 +181,7 @@ Every tool is replay-safe because the pipeline returns the stored Outcome for a 
 
 ### Storage
 
-pi-durable keeps its state in its own SQLite file, through its own connection, with the table prefix `pi_`. The CallStore and the Domains share the App's database file. They are separate files because both hold write transactions open across awaits: on one file, pi's commits would meet the App's open transaction and fail with `SQLITE_BUSY`.
+The App database and the Runtime's database are two SQLite files. The CallStore and the Domains share the App's file; pi-durable keeps its state in its own file, through its own connection, with the table prefix `pi_`. They are separate files because both hold write transactions open across awaits: on one file, pi's commits would meet the App's open transaction and fail with `SQLITE_BUSY`.
 
 What is transactional: a Domain's change and its Outcome, in the App's database. What is not: pi's record of a tool call and the CallStore. If the process stops after the App commits and before pi records the tool result, pi reruns the tool, the pipeline returns the stored Outcome, and nothing runs twice.
 

@@ -14,7 +14,7 @@
 
 ### Conversation t1
 
-Status: idle. Statuses seen: idle → running → waiting → running → idle → running → idle.
+Status: idle. Statuses seen: idle → running → waiting → running → idle.
 
 1. person: "call notes.add-note {\"text\":\"milk\"}\ncall notes.delete-note {\"id\":\"n1\"}"
 2. call t1-r1-c1 notes.add-note: succeeded {"id":"n1","owner":"p1","text":"milk"}

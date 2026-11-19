@@ -15,6 +15,8 @@ type Conversation = {
   view: ConversationView;
   watchers: Set<(view: ConversationView) => void>;
   runs: number;
+  /** Inputs submitted and not yet started. */
+  queued: number;
   queue: Promise<void>;
 };
 
@@ -33,7 +35,7 @@ export function fakeRuntime(plan: Plan): AgentRuntime {
     let c = conversations.get(id);
     if (!c) {
       const view: ConversationView = { id, status: "idle", messages: [] };
-      c = { view, watchers: new Set(), runs: 0, queue: Promise.resolve() };
+      c = { view, watchers: new Set(), runs: 0, queued: 0, queue: Promise.resolve() };
       conversations.set(id, c);
     }
     return c;
@@ -48,6 +50,7 @@ export function fakeRuntime(plan: Plan): AgentRuntime {
   };
 
   const process = async (c: Conversation, runId: string, input: Input, as: Principal) => {
+    c.queued -= 1;
     if (stopped(c)) return;
     c.view.status = "running";
     c.view.messages.push({ from: "person", text: input.text });
@@ -84,7 +87,8 @@ export function fakeRuntime(plan: Plan): AgentRuntime {
     }
     const text = steps.length === 0 ? `You said: ${input.text}` : "Done.";
     c.view.messages.push({ from: "agent", text });
-    c.view.status = "idle";
+    // A queued Input starts in the same step this run ends, as in a durable Runtime.
+    if (c.queued === 0) c.view.status = "idle";
     show(c);
   };
 
@@ -97,6 +101,7 @@ export function fakeRuntime(plan: Plan): AgentRuntime {
     submit: async (to, input, as) => {
       const c = open(to);
       c.runs += 1;
+      c.queued += 1;
       const runId = `${to}-r${c.runs}`;
       c.queue = c.queue.then(() => process(c, runId, input, as));
       return runId;

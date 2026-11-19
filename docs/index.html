@@ -279,7 +279,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
   </div>
   <figure class="fig">
     <div class="fig-scroll">
-    <svg viewBox="0 0 960 300" style="min-width:720px" role="img" aria-label="Two standalone apps, Tasks and Talk. Each container holds a web UI, domains with actions and cards, a call pipeline, a pi-durable runtime and one SQLite file, and exposes an MCP endpoint. Talk installs Tasks as a plugin over a connection on the network, and shows Tasks cards.">
+    <svg viewBox="0 0 960 300" style="min-width:720px" role="img" aria-label="Two standalone apps, Tasks and Talk. Each container holds a web UI, domains with actions and cards, a call pipeline, a pi-durable runtime and two SQLite files (app data, agent state), and exposes an MCP endpoint. Talk installs Tasks as a plugin over a connection on the network, and shows Tasks cards.">
       <defs>
         <marker id="h1p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-pi"/></marker>
       </defs>
@@ -292,7 +292,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
         <rect x="40" y="110" width="350" height="40" rx="7" class="s-pi"/><text x="215" y="135" text-anchor="middle" class="tb c-pi">Call pipeline</text>
         <rect x="40" y="164" width="350" height="40" rx="7" class="s-box"/><text x="215" y="189" text-anchor="middle" class="tb">Domains: tasks · inbox  (actions + cards)</text>
         <rect x="40" y="218" width="170" height="44" rx="7" class="s-sunk"/><text x="125" y="238" text-anchor="middle" class="t">pi-durable runtime</text><text x="125" y="254" text-anchor="middle" class="ts">behind our adapter</text>
-        <rect x="220" y="218" width="170" height="44" rx="7" class="s-sunk"/><text x="305" y="238" text-anchor="middle" class="t">one SQLite file</text><text x="305" y="254" text-anchor="middle" class="ts">app data + agent state</text>
+        <rect x="220" y="218" width="170" height="44" rx="7" class="s-sunk"/><text x="305" y="238" text-anchor="middle" class="t">two SQLite files</text><text x="305" y="254" text-anchor="middle" class="ts">app data · agent state</text>
       </g>
       <g transform="translate(530,0)">
         <rect x="20" y="20" width="390" height="260" rx="12" class="s-box"/>
@@ -304,7 +304,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
         <rect x="220" y="164" width="170" height="40" rx="7" class="s-box"/><text x="305" y="189" text-anchor="middle" class="tb">Domains: chat</text>
         <rect x="40" y="164" width="170" height="40" rx="7" class="s-an"/><text x="125" y="189" text-anchor="middle" class="tb c-an">Plugin: tasks</text>
         <rect x="40" y="218" width="170" height="44" rx="7" class="s-sunk"/><text x="125" y="238" text-anchor="middle" class="t">pi-durable runtime</text><text x="125" y="254" text-anchor="middle" class="ts">behind our adapter</text>
-        <rect x="220" y="218" width="170" height="44" rx="7" class="s-sunk"/><text x="305" y="238" text-anchor="middle" class="t">one SQLite file</text><text x="305" y="254" text-anchor="middle" class="ts">app data + agent state</text>
+        <rect x="220" y="218" width="170" height="44" rx="7" class="s-sunk"/><text x="305" y="238" text-anchor="middle" class="t">two SQLite files</text><text x="305" y="254" text-anchor="middle" class="ts">app data · agent state</text>
       </g>
       <path d="M570,184 H480 V78 H393" class="ln-pi" marker-end="url(#h1p)"/>
       <text x="470" y="204" text-anchor="middle" class="ts c-pi">Connection</text>
@@ -399,7 +399,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
 
         <text x="20" y="262" class="ts">SEAMS (interfaces the pipeline depends on) · two adapters each</text>
         <rect x="20" y="274" width="290" height="110" rx="10" class="s-sunk"/>
-        <text x="36" y="298" class="tb">AgentRuntime</text><text x="36" y="314" class="ts">runs conversations, parks held calls</text>
+        <text x="36" y="298" class="tb">AgentRuntime</text><text x="36" y="314" class="ts">runs conversations, waits on held calls</text>
         <rect x="36" y="326" width="124" height="42" rx="6" class="s-pi"/><text x="98" y="352" text-anchor="middle" class="t">pi-durable</text>
         <rect x="170" y="326" width="124" height="42" rx="6" class="s-box"/><text x="232" y="352" text-anchor="middle" class="t">in-memory fake</text>
         <rect x="335" y="274" width="290" height="110" rx="10" class="s-sunk"/>
@@ -662,7 +662,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
 services:
   tasks:
     image: ghcr.io/…/tasks
-    volumes: [tasks-data:/data]        <span class="c"># one SQLite file</span>
+    volumes: [tasks-data:/data]        <span class="c"># two SQLite files: app data and agent state</span>
     ports: ["3120:3120"]               <span class="c"># UI + /mcp</span>
   talk:
     image: ghcr.io/…/talk
@@ -790,7 +790,7 @@ const P = [
   "Only <code>kit-pi</code> imports it. Six methods cross the seam. One conformance suite runs against the fake and the real adapter, so an upgrade is one package and one red-to-green test run. Version pinned exactly. Cost: features of pi-durable we don't wrap are unavailable until we do."],
  ["“Two state machines for the same thing: yours and pi-durable's.”",
   "The Call machine and pi's tool task both claim to track a call.",
-  "They track different things. The Call machine is the domain truth and works with no agent at all (a button click is a Call). pi-durable is only how the agent's wait survives a restart. The adapter translates one way: Outcome in, park or result out. The Call store is authoritative; if they ever disagree, the Call id lookup wins."],
+  "They track different things. The Call machine is the domain truth and works with no agent at all (a button click is a Call). pi-durable is only how the agent's conversation survives a restart: a held tool waits in memory, is rerun after a restart, and the rerun reads the Call's Outcome from the pipeline. The Call store is authoritative; if they ever disagree, the Call id lookup wins."],
  ["“Exactly-once across a network is impossible.”",
   "A host can crash after the remote app ran the write but before it heard back.",
   "Correct, so we don't claim it. We claim at-least-once delivery plus idempotent execution: the host retries with the same Call id and the owning app returns the stored Outcome. The Outcome is stored in the same transaction as the Domain's change, so a write to data in the owning app's database happens exactly once. Effects outside that database (an email, an HTTP call, another app) are at-least-once: <code>run()</code> receives the Call id to pass on as the idempotency key. Cost: such an effect needs a provider that accepts one."],
@@ -803,7 +803,7 @@ const P = [
  ["“Your gate is in the wrong app.”",
   "Talk holds the danger Call, but Tasks owns the data. A rogue host skips the Hold.",
   "The Hold is a courtesy to the person; the Connection scope is the control. A Connection without the danger Effect cannot run danger Actions at all, whatever the host does. With it, the person has delegated that judgement to this host, and Tasks records which host and Principal made every Call. Cost: delegation is per Effect, not per Action, in version 1."],
- ["“One SQLite file per app doesn't scale.”",
+ ["“SQLite per app doesn't scale.”",
   "One writer, no cross-process locking.",
   "It is the intended ceiling, stated up front: one container per app, one person or a small team. Scale by adding apps, not replicas. The store sits behind the Domain's own repository, so an app that outgrows SQLite changes its repository, not Kit. Cost: no horizontal scale-out for a single app."],
  ["“DDD is ceremony. Where are the aggregates and events?”",
@@ -831,7 +831,7 @@ const PH = [
  ["Language and types","<code>GLOSSARY.md</code>, <code>defineAction</code>, <code>defineDomain</code>, the Call and Outcome types, and the Contract generated from a Domain.","Proof: a Domain file in, its Contract as a Markdown table out. Type tests for what must not compile."],
  ["Call pipeline","The Call MachineDefinition on machina: validate, authorise, gate, execute, with Outcomes stored by Call id.","Proof: a Call script in (invoke, decide, crash, retry), the transitions and final Outcome out. <code>error.*</code> cases cover bad input and refused Principals. The machina state tree is itself an approved expect file."],
  ["Fake runtime and conformance suite","The in-memory <code>AgentRuntime</code>, plus the case folder that any Runtime must pass.","Proof: the suite is green on the fake, including a Hold that is decided later."],
- ["pi-durable adapter","Implement <code>AgentRuntime</code> on pi-durable, sharing one SQLite file through pi's table prefix. The only place pi-durable is imported.","Proof: the same case folder, rendered through pi-durable, matches the fake's expect files byte for byte, including a kill during a write and during a Hold."],
+ ["pi-durable adapter","Implement <code>AgentRuntime</code> on pi-durable, with its own SQLite file next to the App's database. The only place pi-durable is imported.","Proof: the same case folder, rendered through pi-durable, matches the fake's expect files byte for byte. Cases only a durable Runtime can pass cover a restart during a write and during a Hold."],
  ["MCP server and Contract","Serve Actions as MCP tools with Effects as annotations, publish the Contract, add pairing and the Connection machine.","Proof: a request in, the tool list or result out. An unpaired client's refusal is an approved case."],
  ["Cards","The JSON Card catalogue and its renderer.","Proof: an Outcome in, Card JSON out; then the rendered Card as an approved snapshot."],
  ["A first app, then two","Tasks built on Kit with an empty database, then Talk installing it as a Plugin.","Proof: the cross-app sequence in section 6 runs for real, a forced retry does not delete twice, and a stranger gets both running from the README alone."],
