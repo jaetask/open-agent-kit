@@ -360,3 +360,11 @@ The Host, started with `connect` (the example reads `KIT_CONNECT`, a comma-separ
 - `agentContext(contract)` is what the agent is told about a Domain: its about text, and each Action as a tool with what it does (reads; changes; changes after the person says yes) and its description. The pi adapter adds it to the system prompt as one section per Domain. `expect/contract/notes.expect.md` shows it.
 - `modelsFromEnv(env)` from `/pi` picks the model. `KIT_MODEL` is `provider/model` from pi-ai's catalogue, and pi-ai's own providers read their keys from the environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and the others pi-ai lists). For an OpenAI-compatible server, such as a local model server, set `KIT_OPENAI_BASE_URL`, `KIT_MODEL=local/<model>` and, if it needs one, `KIT_OPENAI_API_KEY`.
 - Without a usable model the App still runs: no `KIT_MODEL`, a model pi-ai does not know, or a provider without a key gives a model that answers every message with what is missing (`expect/app/no-model`). The note it returns for the log never contains a key.
+
+### The notes example as an App
+
+`examples/notes/app.ts` runs the notes Domain as an App: `npm run example`. It reads `PORT` (3120), `HOST` (127.0.0.1), `DATA_DIR` (`data`), `KIT_SETUP_SECRET`, `KIT_CONNECT`, `KIT_NAME` and the model settings, keeps `app.db` and `pi.db` in the data folder, and serves its page from `examples/notes/public` (`createApp`'s `page` option).
+
+The page is plain HTML, CSS and one script, with no framework, build step or CDN, under a strict Content-Security-Policy (`default-src 'self'`, no inline script or style). It signs in with the setup secret; lists, adds and deletes notes with the Caller `ui`; shows held Calls with yes and no; refreshes on `/events`; and has a chat panel that sends Inputs (`POST /api/conversations/:to/inputs`) and draws the conversation from `GET /api/conversations/:to/view`, a server-sent stream of ConversationViews. Text from the App is set as text. Cards arrive with their `cardHtml` alongside (`card.html`), escaped on the server, and are the only markup the page inserts. `GET /health` answers `ok`.
+
+When a run ends without an answer, the pi adapter adds an agent message saying why (for example a model error), so the person is not left waiting; a run the person stopped says nothing.

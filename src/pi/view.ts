@@ -75,7 +75,18 @@ export function toView(
       }
     }
   }
-  const live = pi.docs["pi.live"] as { run?: unknown; tools?: Slot[] } | undefined;
+  const live = pi.docs["pi.live"] as
+    | { run?: unknown; tools?: Slot[]; runFailure?: { reason: string; detail?: string } }
+    | undefined;
+  // A run that ended without an answer says why, so the person is not left
+  // waiting; except a stop, which the person asked for.
+  if (live?.runFailure && !live.run && live.runFailure.reason !== "aborted") {
+    const { reason, detail } = live.runFailure;
+    messages.push({
+      from: "agent",
+      text: `The agent stopped (${reason})${detail ? `: ${detail}` : "."}`,
+    });
+  }
   let waiting = false;
   for (const slot of live?.tools ?? []) {
     if (slot.status === "done") continue;

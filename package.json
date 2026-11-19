@@ -63,7 +63,8 @@
     "format": "biome format --write .",
     "format:check": "biome format .",
     "prepare": "git config core.hooksPath .agents/guardrails/hooks || true",
-    "check:docs": "node scripts/check-docs.mjs"
+    "check:docs": "node scripts/check-docs.mjs",
+    "example": "tsx examples/notes/app.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.5",

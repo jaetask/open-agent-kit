@@ -4,7 +4,8 @@
 import { randomUUID } from "node:crypto";
 import type { ActionName, Principal } from "../call.js";
 import type { Calls } from "../calls.js";
-import type { Decision } from "../outcome.js";
+import { cardHtml } from "../card-html.js";
+import type { Decision, Outcome } from "../outcome.js";
 import type { AgentRuntime } from "../runtime.js";
 import type { Connections } from "../connection.js";
 import type { CallStore } from "../store.js";
@@ -24,6 +25,37 @@ const cookieOf = (request: Request) =>
     .split(";")
     .map((part) => part.trim().split("="))
     .find(([name]) => name === COOKIE)?.[1];
+
+/**
+ * An Outcome for the page: a succeeded one's Card also as escaped HTML from
+ * cardHtml, so the page shows Cards without building markup from data.
+ */
+function withHtml(outcome: Outcome) {
+  return outcome.state === "succeeded" && outcome.card
+    ? { ...outcome, card: { ...outcome.card, html: cardHtml(outcome.card) } }
+    : outcome;
+}
+
+/** A conversation as server-sent events: one `view` event per change. */
+function viewStream(runtime: AgentRuntime, to: string): Response {
+  let unwatch = () => {};
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const encoder = new TextEncoder();
+      unwatch = runtime.watch(to, (view) => {
+        const messages = view.messages.map((m) =>
+          m.from === "call" ? { ...m, outcome: withHtml(m.outcome) } : m,
+        );
+        const data = JSON.stringify({ ...view, messages });
+        controller.enqueue(encoder.encode(`event: view\ndata: ${data}\n\n`));
+      });
+    },
+    cancel: () => unwatch(),
+  });
+  return new Response(body, {
+    headers: { "content-type": "text/event-stream", "cache-control": "no-store" },
+  });
+}
 
 /** Why a request is refused before it reaches the App, or null. */
 function csrf(request: Request): string | null {
@@ -67,7 +99,7 @@ export function uiRoutes(options: UiOptions) {
         principal,
         caller: "ui",
       });
-      return json(outcome);
+      return json(withHtml(outcome));
     }
     if (request.method === "POST" && parts[1] === "calls" && parts[3] === "decision" && parts[2]) {
       const id = decodeURIComponent(parts[2]);
@@ -79,7 +111,7 @@ export function uiRoutes(options: UiOptions) {
         return json({ error: "decision is yes or no" }, 400);
       const outcome = await calls.decide(id, decision);
       await runtime?.resume(id, outcome);
-      return json(outcome);
+      return json(withHtml(outcome));
     }
     if (request.method === "GET" && pathname === "/api/connections") {
       return json(await connections.list());
@@ -102,6 +134,16 @@ export function uiRoutes(options: UiOptions) {
     if (request.method === "POST" && parts[1] === "plugins" && parts[3] === "accept" && parts[2]) {
       await host.accept(decodeURIComponent(parts[2]));
       return json(host.list());
+    }
+    if (parts[1] === "conversations" && parts[2]) {
+      const to = decodeURIComponent(parts[2]);
+      if (!runtime) return json({ error: "This App has no agent." }, 404);
+      if (request.method === "POST" && parts[3] === "inputs") {
+        const { text } = (await request.json()) as { text?: string };
+        if (!text?.trim()) return json({ error: "Say something." }, 400);
+        return json({ run: await runtime.submit(to, { text }, principal) });
+      }
+      if (request.method === "GET" && parts[3] === "view") return viewStream(runtime, to);
     }
     if (request.method === "GET" && pathname === "/api/holds") {
       const held = await store.held(principal.id);

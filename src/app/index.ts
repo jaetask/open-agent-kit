@@ -16,6 +16,7 @@ import type { Outcome } from "../outcome.js";
 import type { AgentRuntime } from "../runtime.js";
 import { sqliteConnections, sqliteStore } from "../sqlite.js";
 import type { CallStore } from "../store.js";
+import { staticFile } from "./page.js";
 import { hostPlugins } from "./plugins.js";
 import { sqliteSessions } from "./session.js";
 import { uiRoutes } from "./ui.js";
@@ -52,6 +53,8 @@ export type AppOptions = {
    * every Domain it serves is installed as a Plugin.
    */
   connect?: string[];
+  /** A folder of static files for the App's page, served at `/`; `index.html` for `/`. */
+  page?: string;
   /** How often to claim tokens and check Plugin Contracts, in milliseconds. Defaults to 10 seconds; 0 turns it off. */
   syncEvery?: number;
 };
@@ -199,6 +202,11 @@ export async function createApp(options: AppOptions): Promise<App> {
     }
     const answered = await ui.handle(request);
     if (answered) return answered;
+    if (pathname === "/health") return new Response("ok");
+    if (options.page && request.method === "GET") {
+      const served = await staticFile(options.page, pathname);
+      if (served) return served;
+    }
     return new Response("Not found", { status: 404 });
   };
 

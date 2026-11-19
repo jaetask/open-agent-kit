@@ -56,7 +56,8 @@ export async function modelsFromEnv(env: NodeJS.ProcessEnv = process.env): Promi
       name: provider,
       baseUrl,
       auth: {
-        apiKey: { name: provider, resolve: async () => ({ auth: key ? { apiKey: key } : {} }) },
+        // A local server needs no key, but requests carry one: send a placeholder.
+        apiKey: { name: provider, resolve: async () => ({ auth: { apiKey: key ?? "none" } }) },
       },
       models: [
         {
