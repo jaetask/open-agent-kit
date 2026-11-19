@@ -72,7 +72,7 @@ Node 22.13 or later; the `/pi` entry point needs Node 22.19. `npm install` also 
 - [@earendil-works/pi-durable](https://github.com/earendil-works/pi) 1.5.2 (MIT), with pi-ai and chord: agent runtime, behind the `/pi` adapter; optional peer dependencies.
 - machina: state machines and their visualisers.
 - [@jaetask/snap](https://github.com/jaetask/snap) (MIT): expect tests.
-- [Model Context Protocol](https://modelcontextprotocol.io): app to app communication.
+- [Model Context Protocol](https://modelcontextprotocol.io) TypeScript SDK 2.4.0 (`@modelcontextprotocol/server` and `/client`, Apache-2.0): app to app communication, behind the `/mcp` adapter; optional peer dependencies.
 - [zod](https://zod.dev) (MIT): schemas.
 - TypeScript.
 

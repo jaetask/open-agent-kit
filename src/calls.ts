@@ -1,15 +1,22 @@
-import type { AnyAction } from "./action.js";
+import type { AnyAction, Effect } from "./action.js";
 import type { Call, CallId } from "./call.js";
 import { CALL_MACHINE, type CallEvent } from "./call-machine.js";
+import type { Contract } from "./contract.js";
 import type { Domain } from "./domain.js";
 import { isFinal, next } from "./machine.js";
 import type { Change, Decision, Json, Outcome, Reason } from "./outcome.js";
+import type { ActionSource } from "./runtime.js";
 import type { CallRecord, CallStore } from "./store.js";
 
 /** The Call pipeline: validate, authorise, gate, execute. Every Caller goes through it. */
 export interface Calls {
-  /** Runs a Call, or returns the stored Outcome if this Call id was seen before. */
-  invoke(call: Call): Promise<Outcome>;
+  /**
+   * Runs a Call, or returns the stored Outcome if this Call id was seen before.
+   * `decision` is a yes the caller already has from the person: a danger Call
+   * then goes through its Hold at once. Only the App's own code, or a
+   * Connection allowed to decide, passes it.
+   */
+  invoke(call: Call, decision?: "yes"): Promise<Outcome>;
   /** Ends a Hold. A Call that is not held returns its current Outcome. */
   decide(id: CallId, decision: Decision): Promise<Outcome>;
 }
@@ -31,8 +38,17 @@ export function provide<Deps, Data>(
   return { domain: domain as unknown as Domain<object>, deps: deps as (data: Data) => object };
 }
 
+/** A Contract installed in this App over a Connection, and the ActionSource that runs it. */
+export type Plugin = { contract: Contract; source: ActionSource };
+
 export type CallsOptions<Data> = {
   domains: Provided<Data>[];
+  /**
+   * Plugins: Actions another App owns. This pipeline gates them (danger
+   * holds here, where the person is) and the owning App validates,
+   * authorises and runs them.
+   */
+  plugins?: Plugin[];
   store: CallStore<Data>;
   /** How long a Hold waits for a Decision, in milliseconds. Defaults to one day. */
   holdFor?: number;
@@ -48,13 +64,18 @@ class WrongOutput extends Error {}
 
 export function createCalls<Data>(options: CallsOptions<Data>): Calls {
   const { store, holdFor = DAY, now = Date.now } = options;
-  const actions = new Map<
-    string,
-    { action: AnyAction; domain: Domain<object>; deps: (data: Data) => object }
-  >();
+  type Local = { action: AnyAction; domain: Domain<object>; deps: (data: Data) => object };
+  type Remote = { effect: Effect; source: ActionSource };
+  const actions = new Map<string, Local>();
+  const remote = new Map<string, Remote>();
   for (const { domain, deps } of options.domains) {
     for (const action of domain.actions) {
       actions.set(`${domain.name}.${action.name}`, { action, domain, deps });
+    }
+  }
+  for (const { contract, source } of options.plugins ?? []) {
+    for (const action of contract.actions) {
+      remote.set(action.name, { effect: action.effect, source });
     }
   }
 
@@ -143,7 +164,43 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
           : reason("run-failed", `${record.call.action} failed`),
     });
 
+  // A Plugin's Call runs in the App that owns it. This App stores the Outcome.
+  const executeRemote = async (record: CallRecord, { effect, source }: Remote) => {
+    const decided = record.history.includes("YES → running") ? "yes" : undefined;
+    const run = async () => {
+      try {
+        return await source.run(record.call, decided);
+      } catch {
+        const message = `${record.call.action} could not be reached`;
+        return { state: "failed", reason: reason("unreachable", message) } as Outcome;
+      }
+    };
+    const finish = (outcome: Outcome) =>
+      outcome.state === "succeeded"
+        ? ended(record, "DONE", outcome)
+        : ended(record, "THROW", {
+            state: "failed",
+            reason:
+              "reason" in outcome
+                ? outcome.reason
+                : reason("held", "The App that owns this Action is holding it."),
+          });
+    if (effect === "read") {
+      const outcome = finish(await shared(run));
+      await exclusive(() => store.put(record));
+      return outcome;
+    }
+    return exclusive(async () => {
+      await store.put(record);
+      const outcome = finish(await run());
+      await store.put(record);
+      return outcome;
+    });
+  };
+
   const execute = async (record: CallRecord): Promise<Outcome> => {
+    const plugin = remote.get(record.call.action);
+    if (plugin) return executeRemote(record, plugin);
     const effect = actions.get(record.call.action)?.action.effect;
     if (effect === "read") {
       let result: CallRecord;
@@ -184,9 +241,32 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
       reason: reason("expired", "Nobody decided in time. Nothing was changed."),
     });
 
-  const start = async (call: Call): Promise<Outcome> => {
+  const gate = (record: CallRecord, effect: Effect, decision?: "yes") => {
+    if (effect !== "danger") {
+      move(record, "PASS");
+      return execute(record);
+    }
+    if (decision === "yes") {
+      move(record, "HOLD");
+      move(record, "YES");
+      return execute(record);
+    }
+    const { call } = record;
+    const expiresAt = new Date(now() + holdFor).toISOString();
+    const hold = { id: call.id, action: call.action, input: call.input, expiresAt };
+    return end(record, "HOLD", { state: "held", hold });
+  };
+
+  const start = async (call: Call, decision?: "yes"): Promise<Outcome> => {
     const record: CallRecord = { call, state: CALL_MACHINE.initial, history: [] };
     move(record, "START");
+    const plugin = remote.get(call.action);
+    if (plugin) {
+      // The owning App validates and authorises; this App only gates.
+      move(record, "VALID");
+      move(record, "ALLOW");
+      return gate(record, plugin.effect, decision);
+    }
     const found = actions.get(call.action);
     if (!found) {
       return end(record, "INVALID", {
@@ -211,20 +291,16 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
       });
     }
     move(record, "ALLOW");
-    if (action.effect === "danger") {
-      const expiresAt = new Date(now() + holdFor).toISOString();
-      const hold = { id: call.id, action: call.action, input: call.input, expiresAt };
-      return end(record, "HOLD", { state: "held", hold });
-    }
-    move(record, "PASS");
-    return execute(record);
+    return gate(record, action.effect, decision);
   };
 
   // A stored Call that is not final was held, or was running when the process stopped.
-  const resume = async (record: CallRecord): Promise<Outcome> => {
+  const resume = async (record: CallRecord, decision?: "yes"): Promise<Outcome> => {
     if (record.state === "held") {
       if (expired(record)) return expire(record);
-      return record.outcome as Outcome;
+      if (decision !== "yes") return record.outcome as Outcome;
+      move(record, "YES");
+      return execute(record);
     }
     move(record, "CRASH");
     move(record, "RESUME");
@@ -240,12 +316,12 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
   };
 
   return {
-    invoke: (call) =>
+    invoke: (call, decision) =>
       once(call.id, async () => {
         const record = await store.get(call.id);
-        if (!record) return start(call);
+        if (!record) return start(call, decision);
         if (isFinal(CALL_MACHINE, record.state)) return record.outcome as Outcome;
-        return resume(record);
+        return resume(record, decision);
       }),
 
     decide: (id, decision) =>

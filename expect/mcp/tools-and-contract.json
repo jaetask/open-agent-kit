@@ -1,0 +1,24 @@
+{
+  "connections": [
+    {
+      "name": "full",
+      "principal": "p1",
+      "effects": ["read", "write", "danger"],
+      "state": "connected"
+    }
+  ],
+  "steps": [
+    {
+      "list_tools": "full"
+    },
+    {
+      "list_resources": "full"
+    },
+    {
+      "read": {
+        "as": "full",
+        "uri": "open-agent-kit://contract/notes"
+      }
+    }
+  ]
+}

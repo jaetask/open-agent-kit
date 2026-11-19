@@ -1,0 +1,20 @@
+{
+  "connections": [
+    {
+      "name": "full",
+      "principal": "p1",
+      "effects": ["read", "write", "danger"],
+      "state": "connected"
+    }
+  ],
+  "steps": [
+    {
+      "call": {
+        "as": "full",
+        "tool": "notes__rename-note",
+        "arguments": {},
+        "id": "c1"
+      }
+    }
+  ]
+}

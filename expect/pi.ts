@@ -10,7 +10,7 @@ import {
 import { MemoryStorage, type Storage } from "@earendil-works/pi-durable";
 import type { Plan } from "../src/index.js";
 import { piRuntime } from "../src/pi/index.js";
-import { toolName } from "../src/pi/names.js";
+import { toolName } from "../src/tool-name.js";
 
 type Text = string | { type: string; text?: string }[];
 const textOf = (content: Text) =>

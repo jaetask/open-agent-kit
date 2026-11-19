@@ -13,6 +13,10 @@
               {
                 "group": ["@earendil-works/*", "@earendil-works/*/**"],
                 "message": "Only the /pi entry point (src/pi) may import pi-durable and its packages."
+              },
+              {
+                "group": ["@modelcontextprotocol/*", "@modelcontextprotocol/*/**"],
+                "message": "Only the /mcp entry point (src/mcp) may import the MCP SDK."
               }
             ]
           }
@@ -22,7 +26,7 @@
   },
   "overrides": [
     {
-      "includes": ["src/pi/**", "expect/pi*.ts"],
+      "includes": ["src/pi/**", "src/mcp/**", "expect/pi*.ts", "expect/mcp*.ts", "expect/apps.ts"],
       "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
     }
   ]

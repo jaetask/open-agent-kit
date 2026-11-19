@@ -13,15 +13,16 @@ export type Notes = {
 
 export type NotesDeps = { notes: Notes };
 
-/** Notes kept in memoryStore's data Map, under the key "notes". */
+/** Notes kept in memoryStore's data Map, under the keys "notes" and "notes.last". Ids are never reused. */
 export function mapNotes(data: Map<string, unknown>): Notes {
   const all = () => (data.get("notes") as Note[] | undefined) ?? [];
   return {
     list: (owner) => all().filter((n) => n.owner === owner),
     add: (owner, text) => {
-      const notes = all();
-      const note = { id: `n${notes.length + 1}`, owner, text };
-      data.set("notes", [...notes, note]);
+      const last = ((data.get("notes.last") as number | undefined) ?? 0) + 1;
+      const note = { id: `n${last}`, owner, text };
+      data.set("notes.last", last);
+      data.set("notes", [...all(), note]);
       return note;
     },
     remove: (owner, id) => {
@@ -33,10 +34,10 @@ export function mapNotes(data: Map<string, unknown>): Notes {
   };
 }
 
-/** Notes in a table of the App's SQLite database, on the store's connection. */
+/** Notes in a table of the App's SQLite database, on the store's connection. Ids are never reused. */
 export function sqliteNotes(db: DatabaseSync): Notes {
   db.exec(
-    "CREATE TABLE IF NOT EXISTS notes (seq INTEGER PRIMARY KEY, owner TEXT NOT NULL, text TEXT NOT NULL)",
+    "CREATE TABLE IF NOT EXISTS notes (seq INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL, text TEXT NOT NULL)",
   );
   const row = (r: unknown) => {
     const { seq, owner, text } = r as { seq: number; owner: string; text: string };

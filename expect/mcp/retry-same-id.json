@@ -1,0 +1,32 @@
+{
+  "connections": [
+    {
+      "name": "full",
+      "principal": "p1",
+      "effects": ["read", "write", "danger"],
+      "state": "connected"
+    }
+  ],
+  "steps": [
+    {
+      "call": {
+        "as": "full",
+        "tool": "notes__add-note",
+        "arguments": {
+          "text": "milk"
+        },
+        "id": "c1"
+      }
+    },
+    {
+      "call": {
+        "as": "full",
+        "tool": "notes__add-note",
+        "arguments": {
+          "text": "milk"
+        },
+        "id": "c1"
+      }
+    }
+  ]
+}

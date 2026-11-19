@@ -7,17 +7,26 @@ export { defineAction, EFFECTS } from "./action.js";
 export type { ActionName, Call, Caller, CallId, Principal } from "./call.js";
 export type { CallEvent, CallState } from "./call-machine.js";
 export { CALL_MACHINE } from "./call-machine.js";
-export type { Calls, CallsOptions, Provided } from "./calls.js";
+export type { Calls, CallsOptions, Plugin, Provided } from "./calls.js";
 export { createCalls, provide } from "./calls.js";
 export type { Card } from "./card.js";
 export { defineCard } from "./card.js";
+export type {
+  Connection,
+  ConnectionEvent,
+  ConnectionState,
+  Connections,
+  Credentials,
+  Identity,
+} from "./connection.js";
+export { CONNECTION_MACHINE } from "./connection.js";
 export type { Contract, ContractAction, ContractCard, JsonSchema } from "./contract.js";
 export { contract } from "./contract.js";
 export type { Domain } from "./domain.js";
 export { defineDomain } from "./domain.js";
 export type { Plan } from "./fake-runtime.js";
 export { fakeRuntime } from "./fake-runtime.js";
-export { localSource } from "./local-source.js";
+export { localSource, pluginSource } from "./local-source.js";
 export type { MachineDefinition } from "./machine.js";
 export type { CardView, Change, Decision, Hold, Json, Outcome, Reason } from "./outcome.js";
 export type {

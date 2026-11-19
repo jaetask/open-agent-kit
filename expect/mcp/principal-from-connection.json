@@ -1,0 +1,22 @@
+{
+  "connections": [
+    {
+      "name": "guest-host",
+      "principal": "guest",
+      "effects": ["read", "write", "danger"],
+      "state": "connected"
+    }
+  ],
+  "steps": [
+    {
+      "call": {
+        "as": "guest-host",
+        "tool": "notes__add-note",
+        "arguments": {
+          "text": "milk"
+        },
+        "id": "c1"
+      }
+    }
+  ]
+}

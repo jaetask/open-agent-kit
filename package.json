@@ -37,6 +37,10 @@
     "./pi": {
       "types": "./dist/pi/index.d.ts",
       "import": "./dist/pi/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp/index.d.ts",
+      "import": "./dist/mcp/index.js"
     }
   },
   "publishConfig": {
@@ -63,6 +67,8 @@
     "@earendil-works/pi-ai": "1.5.2",
     "@earendil-works/pi-durable": "1.5.2",
     "@jaetask/snap": "0.1.0",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/server": "2.4.0",
     "@types/node": "22.18.0",
     "tsx": "4.20.5",
     "typescript": "5.9.2"
@@ -73,7 +79,9 @@
   "peerDependencies": {
     "@earendil-works/chord": "1.5.2",
     "@earendil-works/pi-ai": "1.5.2",
-    "@earendil-works/pi-durable": "1.5.2"
+    "@earendil-works/pi-durable": "1.5.2",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/server": "2.4.0"
   },
   "peerDependenciesMeta": {
     "@earendil-works/chord": {
@@ -83,6 +91,12 @@
       "optional": true
     },
     "@earendil-works/pi-durable": {
+      "optional": true
+    },
+    "@modelcontextprotocol/client": {
+      "optional": true
+    },
+    "@modelcontextprotocol/server": {
       "optional": true
     }
   }

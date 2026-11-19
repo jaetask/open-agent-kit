@@ -530,7 +530,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
     <div class="two">
 <pre><span class="c">// The whole interface of the deep module.</span>
 <span class="k">interface</span> Calls {
-  invoke(call: Call): Promise&lt;Outcome&gt;;
+  invoke(call: Call, decision?: "yes"): Promise&lt;Outcome&gt;;
   decide(id: CallId, decision: Decision): Promise&lt;Outcome&gt;;
 }
 <span class="k">type</span> Call = {
@@ -584,7 +584,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
 <span class="c">// Seam 3. Adapters: local Domain, remote Plugin (MCP).</span>
 <span class="k">interface</span> ActionSource {
   contract(): Promise&lt;Contract&gt;;
-  run(call: Call): Promise&lt;Outcome&gt;;
+  run(call: Call, decision?: "yes"): Promise&lt;Outcome&gt;;
 }</pre>
     </div>
     <figure class="fig">
@@ -630,7 +630,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
     </div>
     <figure class="fig">
       <div class="fig-scroll">
-      <svg viewBox="0 0 960 330" style="min-width:760px" role="img" aria-label="Deleting a task in Tasks from a chat in Talk. Talk's pipeline validates against the Contract, its Gate holds the danger Call, the human decides yes in Talk, Talk forwards the Call over MCP with the same Call id and the Connection token, Tasks' own pipeline authenticates, authorises and runs it, and returns the Outcome with a Card that Talk draws. A retry with the same Call id returns the stored Outcome.">
+      <svg viewBox="0 0 960 330" style="min-width:760px" role="img" aria-label="Deleting a task in Tasks from a chat in Talk. Talk's pipeline checks the Action is in the Contract, its Gate holds the danger Call, the human decides yes in Talk, Talk forwards the Call over MCP with the same Call id and the Connection token, Tasks' own pipeline authenticates, authorises and runs it, and returns the Outcome with a Card that Talk draws. A retry with the same Call id returns the stored Outcome.">
         <defs>
           <marker id="q1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk"/></marker>
           <marker id="q1p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-an"/></marker>
@@ -654,9 +654,9 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
       <figcaption>The Hold happens where the person is (Talk). The authority stays where the data is (Tasks): its own pipeline authenticates the token and authorises the Principal, whatever Talk claims. Two pipelines, same code, one Call id.</figcaption>
     </figure>
     <div class="grid3">
-      <div class="card"><h3>Contract</h3><p>Generated from <code>defineDomain()</code> and served by the MCP endpoint as an extension: Actions with Effects, Card specs, Domain version. Semver: removing an Action or changing its input is a major bump.</p></div>
+      <div class="card"><h3>Contract</h3><p>Generated from <code>defineDomain()</code> and served by the MCP endpoint as the resource <code>open-agent-kit://contract/&lt;domain&gt;</code>: Actions with Effects, Card specs, Domain version. Semver: removing an Action or changing its input is a major bump.</p></div>
       <div class="card"><h3>Cards, in three tiers</h3><p>A JSON Card spec every host can draw, an optional React component compiled into trusted hosts, and text with a link as the floor. A remote app can send data, never code.</p></div>
-      <div class="card"><h3>Connection</h3><p>Made by pairing: the person approves in Tasks, Tasks mints a token scoped to them and to the Effects allowed. Its lifecycle (pairing, connected, degraded, revoked) is a second MachineDefinition.</p></div>
+      <div class="card"><h3>Connection</h3><p>Made by pairing: the person approves in Tasks, Tasks mints a token scoped to them and to the Effects allowed. Tasks keeps only a hash of the token. Its lifecycle (pairing, connected, revoked) is a second MachineDefinition.</p></div>
     </div>
 <pre style="margin-top:18px"><span class="c"># docker-compose.yml: someone who wants Tasks and Talk</span>
 services:
@@ -802,7 +802,7 @@ const P = [
   "A Card that crosses a Connection is JSON drawn by the host's own components, from a closed set of element types. React Card components exist only as packages a host chose to compile in. There is no iframe tier and no remote script in version 1. Cost: third-party apps get plainer cards than first-party ones."],
  ["“Your gate is in the wrong app.”",
   "Talk holds the danger Call, but Tasks owns the data. A rogue host skips the Hold.",
-  "The Hold is a courtesy to the person; the Connection scope is the control. A Connection without the danger Effect cannot run danger Actions at all, whatever the host does. With it, the person has delegated that judgement to this host, and Tasks records which host and Principal made every Call. Cost: delegation is per Effect, not per Action, in version 1."],
+  "The Hold is a courtesy to the person; the Connection scope is the control. A Connection without the danger Effect cannot run danger Actions at all, whatever the host does. With it, the person has delegated that judgement to this host: a danger Call that brings the host's yes runs, and one without it is held in Tasks. Tasks records every Call with its Principal and the Caller <code>plugin</code>. Cost: delegation is per Effect, not per Action, in version 1."],
  ["“SQLite per app doesn't scale.”",
   "One writer, no cross-process locking.",
   "It is the intended ceiling, stated up front: one container per app, one person or a small team. Scale by adding apps, not replicas. The store sits behind the Domain's own repository, so an app that outgrows SQLite changes its repository, not Kit. Cost: no horizontal scale-out for a single app."],

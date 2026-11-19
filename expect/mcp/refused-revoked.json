@@ -1,0 +1,15 @@
+{
+  "connections": [
+    {
+      "name": "full",
+      "principal": "p1",
+      "effects": ["read", "write", "danger"],
+      "state": "revoked"
+    }
+  ],
+  "steps": [
+    {
+      "post_as": "full"
+    }
+  ]
+}

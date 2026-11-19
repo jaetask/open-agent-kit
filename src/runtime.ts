@@ -26,7 +26,8 @@ export type Unwatch = () => void;
 /** Where Actions live and run: a local Domain, or a remote Plugin. */
 export interface ActionSource {
   contract(): Promise<Contract>;
-  run(call: Call): Promise<Outcome>;
+  /** `decision` passes on a yes already obtained for a danger Call; see `Calls.invoke`. */
+  run(call: Call, decision?: "yes"): Promise<Outcome>;
 }
 
 /**

@@ -3,19 +3,19 @@
 import { awaitWithContext, BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
 import type { Models } from "@earendil-works/pi-ai";
 import {
+  type ConversationId,
   createRegistry,
   defineDoc,
   defineExtension,
   defineTool,
   Harness,
-  type ConversationId,
   type Storage,
   type ToolExecutionApi,
 } from "@earendil-works/pi-durable";
 import type { Call, CallId, Principal } from "../call.js";
 import type { Outcome } from "../outcome.js";
 import type { ActionSource, AgentRuntime, ConversationView } from "../runtime.js";
-import { toolName } from "./names.js";
+import { toolName } from "../tool-name.js";
 import { type CallDetails, INPUT_KIND, type InputData, toView } from "./view.js";
 
 export type PiRuntimeOptions = {

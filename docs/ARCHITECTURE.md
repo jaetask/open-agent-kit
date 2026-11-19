@@ -61,7 +61,7 @@ const notesDomain = defineDomain({
 
 ```ts
 interface Calls {
-  invoke(call: Call): Promise<Outcome>;
+  invoke(call: Call, decision?: "yes"): Promise<Outcome>;
   decide(id: CallId, decision: Decision): Promise<Outcome>;
 }
 
@@ -125,7 +125,7 @@ interface AgentRuntime {
 
 interface ActionSource {
   contract(): Promise<Contract>;
-  run(call: Call): Promise<Outcome>;
+  run(call: Call, decision?: "yes"): Promise<Outcome>;
 }
 ```
 
@@ -188,3 +188,66 @@ What is transactional: a Domain's change and its Outcome, in the App's database.
 ### Proofs
 
 `expect/runtime` runs on the fake and on pi, with a scripted model: pi-ai's faux provider answers each Input with the Calls its `call <action> <json>` lines name, then `Done.`. `expect/pi` holds cases only a durable Runtime can pass: a restart while a conversation waits on a Hold; a Hold decided while the Runtime was closed; a restart while a write is mid-transaction, which leaves one note and a Call that went through `interrupted`; a late yes refused as expired; and a Hold that expired while the Runtime was closed.
+
+## Layer 5: MCP server, Contract and Connections
+
+### Serving a Domain
+
+```ts
+import { createServer } from "node:http";
+import { mcpServer, nodeListener } from "@jaetask/open-agent-kit/mcp";
+import { sqliteConnections } from "@jaetask/open-agent-kit/sqlite";
+
+const connections = sqliteConnections(db);
+const serve = mcpServer({ domains: [notesDomain], calls, connections, name: "tasks", version: "1.0.0" });
+createServer(nodeListener(serve)).listen(3120);
+```
+
+`mcpServer` returns a fetch-shaped handler (`Request` in, `Response` out) for MCP streamable HTTP; `nodeListener` serves it on Node's `http`. `@jaetask/open-agent-kit/mcp` is the only part of the Kit that imports the MCP SDK (`@modelcontextprotocol/server` and `@modelcontextprotocol/client` 2.4.0, optional peer dependencies). A Biome lint rule fails any import of them elsewhere.
+
+- Each Action is a tool named `domain__action`, the same name the pi adapter uses. Its input schema is the Contract's; `readOnlyHint` is true for `read` and `destructiveHint` for `danger`.
+- Each Domain's Contract is the resource `open-agent-kit://contract/<domain>`, as JSON.
+- A tool call becomes a Call with the Caller `plugin`. Its id is the `_meta` key `open-agent-kit/call-id`, so a retry returns the stored Outcome; a client that sends none gets a fresh id. Its Principal is the Connection's.
+- The result's `structuredContent` is the whole Outcome, Card view included; `content` is one line of text. `isError` is true for every state but `succeeded` and `held`.
+
+### Connections and the Identity seam
+
+```ts
+interface Identity {
+  authenticate(credentials: Credentials): Promise<Principal | null>;
+}
+```
+
+`sqliteConnections(db)` keeps Connections in the App's database and implements `Identity`. A Host asks with `request(host, principal, effects)`; the Connection waits in `pairing`. When the person approves, the App calls `approve(id)`, which moves it to `connected` and returns its bearer token. The token is shown that once and stored as a SHA-256 hash. `revoke(id)` ends it. `CONNECTION_MACHINE` is the lifecycle: pairing, connected, revoked.
+
+Every request needs the bearer token of a connected Connection; otherwise it is answered with HTTP 401 before any MCP handling. A tool call whose Action has an Effect outside the Connection's Effects is `rejected` with `not-in-scope` before the pipeline runs anything.
+
+### Using another App's Domain
+
+```ts
+const tasks = await remoteSource({ url: "http://tasks:3120/mcp", token, domain: "notes" });
+const plugin = { contract: await tasks.contract(), source: tasks };
+const calls = createCalls({ store, domains: [], plugins: [plugin] });
+await runtime.start([pluginSource(plugin, calls)]);
+```
+
+- `remoteSource` is the second ActionSource adapter: it reads the Contract resource and runs each Call as a tool call, passing its Call id. A request the other App refuses, or cannot answer, gives `failed` with `unreachable`.
+- `createCalls` takes `plugins`: this pipeline gates their Calls and the owning App validates, authorises and runs them. A Plugin Call that does not succeed ends `failed` here, carrying the owning App's Reason.
+- `pluginSource(plugin, calls)` is what the agent uses: the Plugin's Contract, with every Call through this App's pipeline.
+
+### Holds across Apps
+
+`Calls.invoke(call, decision)` and `ActionSource.run(call, decision)` take an optional `"yes"`: a Decision the caller already has. A danger Call that brings it goes through its Hold at once (`HOLD → held · YES → running`). A Host's pipeline holds a Plugin's danger Call where the person is; after their yes it sends the Call with `open-agent-kit/decision: "yes"`.
+
+The owning App trusts the Host only as far as the Connection says:
+
+- Without `danger` in the Connection's Effects, danger Calls are refused, whatever the Host sends.
+- With it, the person has let this Host decide Holds. A danger Call with the Host's yes runs; one without it is held in the owning App, where the person decides.
+- The Principal is always the Connection's. A Host cannot act as anyone else, cannot reach an Effect outside its scope, and cannot use a revoked or unapproved Connection.
+- A malicious Host with `danger` in scope can claim a yes the person never gave. That is the delegation the person approved when pairing; revoking the Connection ends it at once.
+
+### Proofs
+
+- `expect/calls`: every Call script also runs with each invoke sent over MCP, one Connection per Principal, and must render exactly as on the local pipeline.
+- `expect/mcp`: the tool list and the Contract resource; refusals for no token, a wrong token, a revoked Connection, an unapproved one, and an Effect out of scope; an unknown tool; a retry with the same Call id; a danger Call held in the owning App, and one decided by the Host; and a Principal taken from the Connection.
+- `expect/apps`: two Apps on localhost. An agent in one, on pi-durable, uses the other's Domain as a Plugin; its danger Call is held and decided in the first App and runs once in the second.

@@ -2,7 +2,7 @@
 import type { ConversationView as PiView } from "@earendil-works/pi-durable";
 import type { Outcome } from "../outcome.js";
 import type { ConversationView, Message } from "../runtime.js";
-import { actionName } from "./names.js";
+import { actionName } from "../tool-name.js";
 
 /** The entry a submission is placed as: the person's text, as whom, and its RunId. */
 export const INPUT_KIND = "kit.input";

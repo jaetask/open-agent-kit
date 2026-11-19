@@ -1,0 +1,30 @@
+{
+  "connections": [
+    {
+      "name": "reader",
+      "principal": "p1",
+      "effects": ["read"],
+      "state": "connected"
+    }
+  ],
+  "steps": [
+    {
+      "call": {
+        "as": "reader",
+        "tool": "notes__add-note",
+        "arguments": {
+          "text": "milk"
+        },
+        "id": "c1"
+      }
+    },
+    {
+      "call": {
+        "as": "reader",
+        "tool": "notes__list-notes",
+        "arguments": {},
+        "id": "c2"
+      }
+    }
+  ]
+}

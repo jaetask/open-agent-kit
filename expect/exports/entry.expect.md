@@ -9,6 +9,7 @@
 | export |
 | --- |
 | CALL_MACHINE |
+| CONNECTION_MACHINE |
 | EFFECTS |
 | contract |
 | createCalls |
@@ -18,4 +19,5 @@
 | fakeRuntime |
 | localSource |
 | memoryStore |
+| pluginSource |
 | provide |
