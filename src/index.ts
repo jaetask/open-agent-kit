@@ -1,7 +1,14 @@
 /**
- * @jaetask/open-agent-kit
- *
- * Nothing is exported yet. Layers are added one at a time, each with its
- * proof. See README.md for the order and docs/index.html for the design.
+ * @jaetask/open-agent-kit: the core. See docs/ARCHITECTURE.md for each
+ * layer's interface and GLOSSARY.md for the words.
  */
-export {};
+export type { Action, AnyAction, Effect, RunContext } from "./action.js";
+export { defineAction, EFFECTS } from "./action.js";
+export type { ActionName, Call, CallId, Caller, Principal } from "./call.js";
+export type { Card } from "./card.js";
+export { defineCard } from "./card.js";
+export type { Contract, ContractAction, ContractCard, JsonSchema } from "./contract.js";
+export { contract } from "./contract.js";
+export type { Domain } from "./domain.js";
+export { defineDomain } from "./domain.js";
+export type { CardView, Change, Hold, Json, Outcome, Reason } from "./outcome.js";

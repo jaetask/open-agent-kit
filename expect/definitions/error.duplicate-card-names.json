@@ -1,0 +1,10 @@
+{
+  "name": "notes",
+  "version": "1.0.0",
+  "about": "Notes.",
+  "actions": [{ "name": "add-note", "description": "Add a note.", "effect": "write" }],
+  "cards": [
+    { "name": "note", "version": 1, "about": "One note." },
+    { "name": "note", "version": 2, "about": "One note." }
+  ]
+}
