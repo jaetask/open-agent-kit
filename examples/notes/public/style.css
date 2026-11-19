@@ -57,7 +57,7 @@ body {
   cursor: pointer;
   font: inherit;
 }
-main {
+main.wrap {
   padding-top: 24px;
   padding-bottom: 40px;
 }

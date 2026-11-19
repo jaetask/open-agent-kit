@@ -41,6 +41,8 @@ Proofs are expect tests: an input file per case with a human-approved `name.expe
 
 The notes example is a small App: notes, an agent that can use them, and a page.
 
+![The notes example: notes, a delete waiting for the person's yes, and the agent's answer with Cards](docs/img/notes-app.png)
+
 ```
 npm install
 npm run example
