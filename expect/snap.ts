@@ -7,6 +7,7 @@ import { runApp } from "./app.js";
 import { runApps } from "./apps.js";
 import { renderScript } from "./calls.js";
 import { renderCard } from "./cards.js";
+import { runPairing } from "./pairing.js";
 import { buildDomain } from "./definitions.js";
 import { runMcp } from "./mcp.js";
 import { piFactory } from "./pi.js";
@@ -81,6 +82,11 @@ const failed = await snap([
     // The notes example as a running App over real HTTP.
     dir: "expect/app",
     render: runApp,
+  },
+  {
+    // Pairing over HTTP between two running Apps.
+    dir: "expect/pairing",
+    render: runPairing,
   },
 ]);
 process.exit(failed === 0 ? 0 : 1);

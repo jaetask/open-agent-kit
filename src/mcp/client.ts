@@ -54,3 +54,19 @@ export async function remoteSource(
     close: () => client.close(),
   };
 }
+
+/** The Domains another App serves to this Connection, by their Contract resources. */
+export async function remoteDomains(options: Omit<RemoteOptions, "domain">): Promise<string[]> {
+  const client = new Client({ name: "open-agent-kit", version: "1" });
+  const transport = new StreamableHTTPClientTransport(new URL(options.url), {
+    requestInit: { headers: { authorization: `Bearer ${options.token}` } },
+  });
+  await client.connect(transport);
+  try {
+    const { resources } = await client.listResources();
+    const prefix = contractUri("");
+    return resources.filter((r) => r.uri.startsWith(prefix)).map((r) => r.uri.slice(prefix.length));
+  } finally {
+    await client.close();
+  }
+}

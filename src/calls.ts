@@ -49,7 +49,7 @@ export type CallsOptions<Data> = {
    * holds here, where the person is) and the owning App validates,
    * authorises and runs them.
    */
-  plugins?: Plugin[];
+  plugins?: Plugin[] | (() => Plugin[]);
   store: CallStore<Data>;
   /** How long a Hold waits for a Decision, in milliseconds. Defaults to one day. */
   holdFor?: number;
@@ -76,15 +76,19 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
   type Local = { action: AnyAction; domain: Domain<object>; deps: (data: Data) => object };
   type Remote = { effect: Effect; source: ActionSource };
   const actions = new Map<string, Local>();
-  const remote = new Map<string, Remote>();
+  // The Plugins installed now: a list, or a function for Plugins that come and go.
+  const installed = () =>
+    typeof options.plugins === "function" ? options.plugins() : (options.plugins ?? []);
+  const remoteOf = (action: string): Remote | undefined => {
+    for (const { contract, source } of installed()) {
+      const found = contract.actions.find((a) => a.name === action);
+      if (found) return { effect: found.effect, source };
+    }
+    return undefined;
+  };
   for (const { domain, deps } of options.domains) {
     for (const action of domain.actions) {
       actions.set(`${domain.name}.${action.name}`, { action, domain, deps });
-    }
-  }
-  for (const { contract, source } of options.plugins ?? []) {
-    for (const action of contract.actions) {
-      remote.set(action.name, { effect: action.effect, source });
     }
   }
 
@@ -215,7 +219,7 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
   };
 
   const executeNow = async (record: CallRecord): Promise<Outcome> => {
-    const plugin = remote.get(record.call.action);
+    const plugin = remoteOf(record.call.action);
     if (plugin) return executeRemote(record, plugin);
     const effect = actions.get(record.call.action)?.action.effect;
     if (effect === "read") {
@@ -276,7 +280,7 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
   const start = async (call: Call, decision?: "yes"): Promise<Outcome> => {
     const record: CallRecord = { call, state: CALL_MACHINE.initial, history: [] };
     move(record, "START");
-    const plugin = remote.get(call.action);
+    const plugin = remoteOf(call.action);
     if (plugin) {
       // The owning App validates and authorises; this App only gates.
       move(record, "VALID");

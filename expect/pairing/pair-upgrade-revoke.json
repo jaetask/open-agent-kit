@@ -1,0 +1,88 @@
+{
+  "steps": [
+    {
+      "tasks_version": "1.0.0"
+    },
+    {
+      "talk": true
+    },
+    {
+      "tasks_page": {
+        "method": "GET",
+        "path": "/api/connections"
+      }
+    },
+    {
+      "sync": true
+    },
+    {
+      "talk_page": {
+        "method": "GET",
+        "path": "/api/plugins"
+      }
+    },
+    {
+      "tasks_page": {
+        "method": "POST",
+        "path": "/api/connections/<connection 1>/approve"
+      }
+    },
+    {
+      "sync": true
+    },
+    {
+      "talk_page": {
+        "method": "GET",
+        "path": "/api/plugins"
+      }
+    },
+    {
+      "chat": "call notes.add-note {\"text\":\"milk\"}"
+    },
+    {
+      "tasks_version": "1.1.0"
+    },
+    {
+      "sync": true
+    },
+    {
+      "talk_page": {
+        "method": "GET",
+        "path": "/api/plugins"
+      }
+    },
+    {
+      "tasks_version": "2.0.0"
+    },
+    {
+      "sync": true
+    },
+    {
+      "talk_page": {
+        "method": "GET",
+        "path": "/api/plugins"
+      }
+    },
+    {
+      "chat": "call notes.add-note {\"text\":\"bread\"}"
+    },
+    {
+      "talk_page": {
+        "method": "POST",
+        "path": "/api/plugins/notes/accept"
+      }
+    },
+    {
+      "chat": "call notes.add-note {\"text\":\"eggs\"}"
+    },
+    {
+      "tasks_page": {
+        "method": "POST",
+        "path": "/api/connections/<connection 1>/revoke"
+      }
+    },
+    {
+      "chat": "call notes.list-notes {}"
+    }
+  ]
+}

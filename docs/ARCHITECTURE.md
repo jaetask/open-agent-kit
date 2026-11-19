@@ -116,10 +116,12 @@ Two stores ship. `memoryStore()` is in the root entry point; its transaction wor
 ```ts
 interface AgentRuntime {
   start(actions: ActionSource[]): Promise<void>;
+  install(actions: ActionSource): Promise<void>;
   submit(to: ConversationId, input: Input, as: Principal): Promise<RunId>;
   watch(to: ConversationId, on: (view: ConversationView) => void): Unwatch;
   resume(call: CallId, outcome: Outcome): Promise<void>;
   stop(to: ConversationId): Promise<void>;
+  conversationOf(call: CallId): Promise<ConversationId | undefined>;
   close(): Promise<void>;
 }
 
@@ -333,3 +335,18 @@ The second Identity adapter is a session for one person. It is for a single-user
 - **Routes.** `POST /api/calls` with `{ id?, action, input }` invokes with the Caller `ui`. `POST /api/calls/:id/decision` with `{ decision: "yes" | "no" }` decides the person's own held Call and resumes its conversation. `GET /api/holds` lists their held Calls with each one's conversation. `GET /events` needs the session too.
 
 `expect/app/ui-session` shows each refusal: no session, a wrong secret, no header, another origin, a signed-out session. `expect/app/session-expiry` shows a session refused after 31 days and sign-out everywhere.
+
+### Pairing over HTTP
+
+The App that owns the Actions:
+
+- `POST /pair` with `{ host, effects }` makes a Connection in `pairing` for the App's owner and answers `{ id, claim }`. The claim secret goes only to the Host that asked; its hash is stored.
+- The person approves or revokes on the App's page: `GET /api/connections`, `POST /api/connections/:id/approve`, `POST /api/connections/:id/revoke`.
+- `POST /pair/:id/claim` with `{ claim }` answers 202 while the Connection waits, the token once after approval (HTTP 200), and 403 otherwise. A token is claimed once; the token `approve` made is replaced, so nobody else has seen it.
+
+The Host, started with `connect` (the example reads `KIT_CONNECT`, a comma-separated list of MCP endpoints):
+
+- At first start it asks each App to pair and stores the claim secret. Every `syncEvery` (10 seconds) it claims the token, then installs every Domain that App serves as a Plugin: into its pipeline, and into the running Runtime with `runtime.install`. It stores the token as given, because it needs it to call.
+- Each sync fetches the Contracts again. A new minor or patch version replaces the Plugin. A new major version takes the Plugin out, and its Calls are refused, until the person accepts it with `POST /api/plugins/:domain/accept`. `GET /api/plugins` lists where each pairing stands.
+
+`expect/pairing/pair-upgrade-revoke` runs it between two Apps: pairing, approval, a Call by the Host's agent, a minor upgrade, a major upgrade held back and then accepted, and a revoked Connection.

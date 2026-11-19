@@ -53,6 +53,8 @@ const KitConversations = defineDoc<{ conversations: Conversations; held?: Record
  */
 export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
   let harness: Harness | undefined;
+  // pi-durable reads the registry at each use, so an extension installed later is used at once.
+  const registry = createRegistry();
   const tools = new Set<string>();
   // Calls waiting for a Decision in this process, by Call id.
   const waiting = new Map<CallId, (outcome: Outcome) => void>();
@@ -165,7 +167,6 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
 
   return {
     start: async (sources) => {
-      const registry = createRegistry();
       for (const source of sources) registry.install(await extension(source));
       harness = await Harness.open(
         options.storage,
@@ -173,6 +174,10 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
         context,
       );
       harness.resume();
+    },
+
+    install: async (source) => {
+      registry.install(await extension(source));
     },
 
     submit: async (to, input, as: Principal) => {

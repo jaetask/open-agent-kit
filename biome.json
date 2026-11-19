@@ -32,7 +32,8 @@
         "expect/pi*.ts",
         "expect/mcp*.ts",
         "expect/apps.ts",
-        "expect/app.ts"
+        "expect/app.ts",
+        "expect/pairing.ts"
       ],
       "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
     }

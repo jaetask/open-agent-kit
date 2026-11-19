@@ -51,4 +51,20 @@ export interface Connections extends Identity {
   get(id: string): Promise<Connection | undefined>;
   /** The connected Connection a token belongs to, or null. */
   find(credentials: Credentials): Promise<Connection | null>;
+  /**
+   * A Host asks over HTTP. Like `request`, and also returns a claim secret
+   * that only the Host knows, to fetch its token once approved.
+   */
+  pair(
+    host: string,
+    principal: Principal,
+    effects: Effect[],
+  ): Promise<{ connection: Connection; claim: string }>;
+  /**
+   * The Host fetches its token with its claim secret: the token once the
+   * Connection is approved, "waiting" before, null if refused or already claimed.
+   */
+  claim(id: string, claim: string): Promise<string | "waiting" | null>;
+  /** Every Connection, newest last. */
+  list(): Promise<Connection[]>;
 }

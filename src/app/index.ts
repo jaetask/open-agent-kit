@@ -10,11 +10,13 @@ import { localSource, pluginSource } from "../local-source.js";
 import { remoteSource, type RemoteOptions } from "../mcp/client.js";
 import { nodeListener } from "../mcp/node.js";
 import { mcpServer } from "../mcp/server.js";
+import { EFFECTS, type Effect } from "../action.js";
 import type { Principal } from "../call.js";
 import type { Outcome } from "../outcome.js";
 import type { AgentRuntime } from "../runtime.js";
 import { sqliteConnections, sqliteStore } from "../sqlite.js";
 import type { CallStore } from "../store.js";
+import { hostPlugins } from "./plugins.js";
 import { sqliteSessions } from "./session.js";
 import { uiRoutes } from "./ui.js";
 
@@ -44,6 +46,14 @@ export type AppOptions = {
   setupSecret?: string;
   /** Where the App writes its few messages. Defaults to console.log. */
   log?: (line: string) => void;
+  /**
+   * Other Apps' MCP endpoints to pair with, such as the env var KIT_CONNECT.
+   * At first start the App asks each to pair; once the person there approves,
+   * every Domain it serves is installed as a Plugin.
+   */
+  connect?: string[];
+  /** How often to claim tokens and check Plugin Contracts, in milliseconds. Defaults to 10 seconds; 0 turns it off. */
+  syncEvery?: number;
 };
 
 export type App = {
@@ -58,6 +68,8 @@ export type App = {
    * Runtime so a waiting conversation carries on. Returns the expired Outcomes.
    */
   sweepHolds(): Promise<Outcome[]>;
+  /** Claims pairing tokens, installs approved Plugins and checks their Contract versions. */
+  syncPlugins(): Promise<void>;
   /** Calls `listener` with every ChangeEvent; returns a function that stops it. */
   onChange(listener: (event: ChangeEvent) => void): () => void;
   /**
@@ -78,9 +90,18 @@ export async function createApp(options: AppOptions): Promise<App> {
   const remotes = await Promise.all((options.plugins ?? []).map((p) => remoteSource(p)));
   const plugins: Plugin[] = [];
   for (const source of remotes) plugins.push({ contract: await source.contract(), source });
+  const log = options.log ?? console.log;
+  const host = hostPlugins(db, {
+    host: options.name,
+    effects: ["read", "write", "danger"],
+    log,
+    onInstall: async (plugin) => {
+      await options.runtime?.install(pluginSource(plugin, calls));
+    },
+  });
   const sessions = sqliteSessions(db, options.owner ?? { id: "owner" }, options.now);
   const made = sessions.setup(options.setupSecret);
-  if (made) (options.log ?? console.log)(`Setup secret (shown once): ${made}`);
+  if (made) log(`Setup secret (shown once): ${made}`);
   const listeners = new Set<(event: ChangeEvent) => void>();
   const calls = createCalls({
     store,
@@ -88,7 +109,7 @@ export async function createApp(options: AppOptions): Promise<App> {
       for (const listener of listeners) listener(event);
     },
     domains: options.domains,
-    plugins,
+    plugins: () => [...plugins, ...host.installed()],
     ...(options.holdFor === undefined ? {} : { holdFor: options.holdFor }),
     ...(options.now ? { now: options.now } : {}),
   });
@@ -135,7 +156,8 @@ export async function createApp(options: AppOptions): Promise<App> {
   };
   const streams = new Set<ReadableStreamDefaultController<Uint8Array>>();
 
-  const ui = uiRoutes({ calls, store, sessions, runtime: options.runtime });
+  const ui = uiRoutes({ calls, store, sessions, runtime: options.runtime, connections, host });
+  const owner = options.owner ?? { id: "owner" };
 
   const fetch = async (request: Request) => {
     const { pathname } = new URL(request.url);
@@ -143,6 +165,30 @@ export async function createApp(options: AppOptions): Promise<App> {
     if (pathname === "/events" && request.method === "GET") {
       if (!(await ui.principalOf(request))) return new Response("Sign in first.", { status: 401 });
       return events();
+    }
+    if (pathname === "/pair" && request.method === "POST") {
+      const body = (await request.json().catch(() => ({}))) as {
+        host?: unknown;
+        effects?: unknown;
+      };
+      const effects = Array.isArray(body.effects) ? body.effects : [];
+      const valid = effects.every((e) => EFFECTS.includes(e as Effect));
+      if (typeof body.host !== "string" || !body.host || body.host.length > 100 || !valid) {
+        return new Response("A pairing request needs a host name and a list of Effects.", {
+          status: 400,
+        });
+      }
+      const { connection, claim } = await connections.pair(body.host, owner, effects as Effect[]);
+      log(`${body.host} asks to pair. Approve it on this App's page.`);
+      return Response.json({ id: connection.id, claim });
+    }
+    const claimed = pathname.match(/^\/pair\/([^/]+)\/claim$/);
+    if (claimed && request.method === "POST") {
+      const { claim } = (await request.json().catch(() => ({}))) as { claim?: string };
+      const result = claim ? await connections.claim(claimed[1] as string, claim) : null;
+      if (result === "waiting") return Response.json({ state: "waiting" }, { status: 202 });
+      if (!result) return new Response("Refused.", { status: 403 });
+      return Response.json({ token: result });
     }
     const answered = await ui.handle(request);
     if (answered) return answered;
@@ -165,9 +211,20 @@ export async function createApp(options: AppOptions): Promise<App> {
   const sweeper = every > 0 ? setInterval(() => void sweepHolds(), every) : undefined;
   sweeper?.unref();
 
+  for (const url of options.connect ?? []) {
+    await host
+      .ask(url)
+      .catch((error: Error) => log(`Could not ask ${url} to pair: ${error.message}`));
+  }
+  await host.sync();
+  const syncEvery = options.syncEvery ?? 10_000;
+  const syncer = syncEvery > 0 ? setInterval(() => void host.sync(), syncEvery) : undefined;
+  syncer?.unref();
+
   let http: Server | undefined;
   return {
     sweepHolds,
+    syncPlugins: () => host.sync(),
     db,
     store,
     calls,
@@ -186,10 +243,12 @@ export async function createApp(options: AppOptions): Promise<App> {
     },
     close: async () => {
       clearInterval(sweeper);
+      clearInterval(syncer);
       for (const stream of streams) stream.close();
       streams.clear();
       await options.runtime?.close();
       for (const source of remotes) await source.close();
+      await host.close();
       if (http) {
         http.closeAllConnections();
         await new Promise((resolve) => http?.close(resolve));

@@ -6,7 +6,9 @@ import type { ActionName, Principal } from "../call.js";
 import type { Calls } from "../calls.js";
 import type { Decision } from "../outcome.js";
 import type { AgentRuntime } from "../runtime.js";
+import type { Connections } from "../connection.js";
 import type { CallStore } from "../store.js";
+import type { HostPlugins } from "./plugins.js";
 import { SESSION_DAYS, type Sessions } from "./session.js";
 
 const COOKIE = "kit_session";
@@ -37,11 +39,15 @@ export type UiOptions = {
   store: CallStore<unknown>;
   sessions: Sessions;
   runtime: AgentRuntime | undefined;
+  /** Hosts that asked to pair with this App. */
+  connections: Connections;
+  /** Other Apps this App paired with. */
+  host: HostPlugins;
 };
 
 /** Answers `/api/...`, or returns null for any other path. */
 export function uiRoutes(options: UiOptions) {
-  const { calls, store, sessions, runtime } = options;
+  const { calls, store, sessions, runtime, connections, host } = options;
 
   /** The signed-in Principal, or null. */
   const principalOf = async (request: Request): Promise<Principal | null> => {
@@ -74,6 +80,28 @@ export function uiRoutes(options: UiOptions) {
       const outcome = await calls.decide(id, decision);
       await runtime?.resume(id, outcome);
       return json(outcome);
+    }
+    if (request.method === "GET" && pathname === "/api/connections") {
+      return json(await connections.list());
+    }
+    if (request.method === "POST" && parts[1] === "connections" && parts[2]) {
+      const id = decodeURIComponent(parts[2]);
+      if (!(await connections.get(id))) return json({ error: "No such Connection." }, 404);
+      try {
+        if (parts[3] === "approve") await connections.approve(id);
+        else if (parts[3] === "revoke") await connections.revoke(id);
+        else return json({ error: "Not found." }, 404);
+      } catch (error) {
+        return json({ error: (error as Error).message }, 409);
+      }
+      return json(await connections.get(id));
+    }
+    if (request.method === "GET" && pathname === "/api/plugins") {
+      return json(host.list());
+    }
+    if (request.method === "POST" && parts[1] === "plugins" && parts[3] === "accept" && parts[2]) {
+      await host.accept(decodeURIComponent(parts[2]));
+      return json(host.list());
     }
     if (request.method === "GET" && pathname === "/api/holds") {
       const held = await store.held(principal.id);
