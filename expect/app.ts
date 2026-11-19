@@ -17,7 +17,19 @@ import { scriptedModels } from "./pi.js";
 import { describe, scriptPlan } from "./runtime.js";
 
 type Step =
-  | { ui: { id: string; action: string; input: unknown } }
+  | { sign_in: string } // POST /api/session with this setup secret
+  | { ui: { id: string; action: string; input: unknown } } // POST /api/calls
+  | { holds: true } // GET /api/holds
+  | {
+      raw: {
+        method: string;
+        path: string;
+        body?: unknown;
+        session?: boolean;
+        header?: boolean;
+        origin?: string;
+      };
+    }
   | { host: { id: string; action: string; input: unknown } } // over MCP, as a paired Host
   | { chat: { to: string; text: string } }
   | { decide: { to: string; call: string; decision: Decision } }
@@ -34,10 +46,19 @@ export async function runApp(input: string): Promise<string> {
   const views = new Map<string, ConversationView>();
   const events: string[] = [];
   let stopEvents = () => {};
+  let cookie = "";
+  // A request from the App's own page: the session cookie and the X-Kit-Request header.
+  const page = (path: string, init: { method?: string; body?: unknown } = {}) =>
+    fetch(`${url}${path}`, {
+      method: init.method ?? "GET",
+      headers: { cookie, "x-kit-request": "1", "content-type": "application/json" },
+      ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
+    });
 
   // Reads /events over HTTP, as a page would.
   const listen = async () => {
-    const response = await fetch(`${url}/events`);
+    if (!cookie) return;
+    const response = await fetch(`${url}/events`, { headers: { cookie } });
     const reader = (response.body as ReadableStream<Uint8Array>).getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -77,6 +98,8 @@ export async function runApp(input: string): Promise<string> {
       file: join(dir, "app.db"),
       now,
       sweepEvery: 0,
+      owner: { id: "p1" },
+      setupSecret: "expect-setup-secret",
       domains: [provide(notesDomain, (db: DatabaseSync) => ({ notes: sqliteNotes(db) }))],
       runtime: piRuntime({ storage, now, ...scriptedModels(scriptPlan) }),
     });
@@ -99,16 +122,60 @@ export async function runApp(input: string): Promise<string> {
   try {
     for (const [i, step] of steps.entries()) {
       const n = `${i + 1}.`;
-      if ("ui" in step) {
-        const { id, action, input } = step.ui;
-        const outcome = await app.calls.invoke({
-          id,
-          action: action as `${string}.${string}`,
-          input,
-          principal: { id: "p1" },
-          caller: "ui",
+      if ("sign_in" in step) {
+        const response = await page("/api/session", {
+          method: "POST",
+          body: { secret: step.sign_in },
         });
-        lines.push(`${n} the UI calls ${action} as ${id} → ${outcome.state}`);
+        const set = response.headers.get("set-cookie") ?? "";
+        if (response.ok) {
+          cookie = set.split(";")[0] as string;
+          await listen();
+        }
+        const flags = set
+          .split(";")
+          .slice(1)
+          .map((f) => f.trim())
+          .filter((f) => !f.startsWith("Max-Age"));
+        const shown = flags.length ? `, cookie ${flags.join("; ")}` : "";
+        lines.push(
+          `${n} sign in with ${JSON.stringify(step.sign_in)} → HTTP ${response.status}${shown}`,
+        );
+      } else if ("ui" in step) {
+        const { id, action, input } = step.ui;
+        const response = await page("/api/calls", { method: "POST", body: { id, action, input } });
+        const outcome = (await response.json()) as { state: string };
+        lines.push(`${n} the page calls ${action} as ${id} → ${outcome.state}`);
+      } else if ("holds" in step) {
+        const held = (await (await page("/api/holds")).json()) as {
+          call: string;
+          action: string;
+          conversation: string | null;
+        }[];
+        const list = held.map((h) => `${h.call} ${h.action} in ${h.conversation ?? "none"}`);
+        lines.push(`${n} the page lists held Calls: ${list.join("; ") || "none"}`);
+      } else if ("raw" in step) {
+        const r = step.raw;
+        const response = await fetch(`${url}${r.path}`, {
+          method: r.method,
+          headers: {
+            "content-type": "application/json",
+            ...(r.session ? { cookie } : {}),
+            ...(r.header ? { "x-kit-request": "1" } : {}),
+            ...(r.origin ? { origin: r.origin } : {}),
+          },
+          ...(r.body === undefined ? {} : { body: JSON.stringify(r.body) }),
+        });
+        const what = [
+          r.session ? "session" : "no session",
+          r.header ? "header" : "no header",
+          r.origin ? `origin ${r.origin}` : "",
+        ]
+          .filter(Boolean)
+          .join(", ");
+        lines.push(
+          `${n} ${r.method} ${r.path} (${what}) → HTTP ${response.status}: ${await response.text()}`,
+        );
       } else if ("host" in step) {
         if (!host) {
           const pairing = await app.connections.request("host", { id: "p1" }, [
@@ -138,9 +205,12 @@ export async function runApp(input: string): Promise<string> {
         lines.push(`${n} p1 says in ${to} (${runId}): ${JSON.stringify(text)}`);
       } else if ("decide" in step) {
         const { call, decision } = step.decide;
-        const outcome = await app.calls.decide(call, decision);
-        await app.runtime?.resume(call, outcome);
-        lines.push(`${n} p1 decides ${call} ${decision} → ${outcome.state}`);
+        const response = await page(`/api/calls/${call}/decision`, {
+          method: "POST",
+          body: { decision },
+        });
+        const outcome = (await response.json()) as { state: string };
+        lines.push(`${n} the page decides ${call} ${decision} → ${outcome.state}`);
       } else {
         stopEvents();
         await host?.close();

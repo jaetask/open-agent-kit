@@ -322,3 +322,14 @@ await app.listen(3120);
 ### Change events
 
 `createCalls` takes `onChange(event)`, called once for each Call that succeeds with Changes, after its Outcome is stored; a retry that returns the stored Outcome publishes nothing. A `ChangeEvent` is `{ call, changes }`. `createApp` publishes them on `app.onChange(listener)` and as server-sent events on `GET /events`: one `change` event per Call, with `data` `{ call, action, caller, changes }`, and a comment every 15 seconds. A page refetches what changed, whether the change came from the UI, the agent or a Plugin. `expect/app/change-events` reads the stream over HTTP while all three make Calls.
+
+### The App's own page: the UI Caller
+
+The second Identity adapter is a session for one person. It is for a single-user App on a trusted network or tailnet. It is not multi-user authentication: there are no accounts, no passwords and no roles.
+
+- **Setup secret.** At first start the App makes a random setup secret and writes it once to its log; or it takes one from `setupSecret` (the example reads `KIT_SETUP_SECRET`). Only its SHA-256 hash is stored. To set a new one, start the App with `KIT_SETUP_SECRET`.
+- **Session.** `POST /api/session` with `{ secret }` sets the cookie `kit_session`: `HttpOnly`, `SameSite=Strict`, `Path=/`, 30 days, and `Secure` over HTTPS. The session token is stored only as a hash. `DELETE /api/session` ends it. The session's Principal is `owner` (`{ id: "owner" }` by default).
+- **CSRF.** The cookie is `SameSite=Strict`, so other sites cannot send it. Every request that is not a GET must also carry the header `X-Kit-Request: 1`, which a cross-site form cannot send and a cross-site script cannot send without a CORS preflight the App never answers; a request whose `Origin` is another site is refused.
+- **Routes.** `POST /api/calls` with `{ id?, action, input }` invokes with the Caller `ui`. `POST /api/calls/:id/decision` with `{ decision: "yes" | "no" }` decides the person's own held Call and resumes its conversation. `GET /api/holds` lists their held Calls with each one's conversation. `GET /events` needs the session too.
+
+`expect/app/ui-session` shows each refusal: no session, a wrong secret, no header, another origin, a signed-out session.

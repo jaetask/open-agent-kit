@@ -8,12 +8,13 @@
 
 ### Steps
 
-1. the UI calls notes.add-note as u1 → succeeded
-2. the UI calls notes.add-note as u1 → succeeded
-3. a Host calls notes.add-note over MCP as h1 → succeeded
-4. p1 says in t1 (t1-r1): "call notes.add-note {\"text\":\"eggs\"}\ncall notes.delete-note {\"id\":\"n1\"}"
-5. p1 decides t1-r1-c2 yes → succeeded
-6. the UI calls notes.list-notes as u2 → succeeded
+1. sign in with "expect-setup-secret" → HTTP 200, cookie HttpOnly; SameSite=Strict; Path=/
+2. the page calls notes.add-note as u1 → succeeded
+3. the page calls notes.add-note as u1 → succeeded
+4. a Host calls notes.add-note over MCP as h1 → succeeded
+5. p1 says in t1 (t1-r1): "call notes.add-note {\"text\":\"eggs\"}\ncall notes.delete-note {\"id\":\"n1\"}"
+6. the page decides t1-r1-c2 yes → succeeded
+7. the page calls notes.list-notes as u2 → succeeded
 
 ### Change events seen
 

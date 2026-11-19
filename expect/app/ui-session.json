@@ -1,0 +1,96 @@
+{
+  "steps": [
+    {
+      "raw": {
+        "method": "POST",
+        "path": "/api/calls",
+        "body": {
+          "action": "notes.add-note",
+          "input": {
+            "text": "milk"
+          }
+        },
+        "header": true
+      }
+    },
+    {
+      "raw": {
+        "method": "GET",
+        "path": "/events"
+      }
+    },
+    {
+      "sign_in": "not-the-secret"
+    },
+    {
+      "sign_in": "expect-setup-secret"
+    },
+    {
+      "raw": {
+        "method": "POST",
+        "path": "/api/calls",
+        "body": {
+          "action": "notes.add-note",
+          "input": {
+            "text": "milk"
+          }
+        },
+        "session": true
+      }
+    },
+    {
+      "raw": {
+        "method": "POST",
+        "path": "/api/calls",
+        "body": {
+          "action": "notes.add-note",
+          "input": {
+            "text": "milk"
+          }
+        },
+        "session": true,
+        "header": true,
+        "origin": "https://evil.example"
+      }
+    },
+    {
+      "raw": {
+        "method": "GET",
+        "path": "/api/session",
+        "session": true
+      }
+    },
+    {
+      "ui": {
+        "id": "u1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "raw": {
+        "method": "DELETE",
+        "path": "/api/session",
+        "session": true,
+        "header": true
+      }
+    },
+    {
+      "raw": {
+        "method": "POST",
+        "path": "/api/calls",
+        "body": {
+          "id": "u2",
+          "action": "notes.add-note",
+          "input": {
+            "text": "milk"
+          }
+        },
+        "session": true,
+        "header": true
+      }
+    }
+  ]
+}

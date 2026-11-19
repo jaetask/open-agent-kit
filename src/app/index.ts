@@ -10,10 +10,13 @@ import { localSource, pluginSource } from "../local-source.js";
 import { remoteSource, type RemoteOptions } from "../mcp/client.js";
 import { nodeListener } from "../mcp/node.js";
 import { mcpServer } from "../mcp/server.js";
+import type { Principal } from "../call.js";
 import type { Outcome } from "../outcome.js";
 import type { AgentRuntime } from "../runtime.js";
 import { sqliteConnections, sqliteStore } from "../sqlite.js";
 import type { CallStore } from "../store.js";
+import { sqliteSessions } from "./session.js";
+import { uiRoutes } from "./ui.js";
 
 export type AppOptions = {
   /** The App's name and version, as other Apps see them over MCP. */
@@ -32,6 +35,15 @@ export type AppOptions = {
   now?: () => number;
   /** How often to expire overdue Holds, in milliseconds. Defaults to one minute; 0 turns it off. */
   sweepEvery?: number;
+  /** The one person this App serves. Defaults to `{ id: "owner" }`. */
+  owner?: Principal;
+  /**
+   * The setup secret, such as the env var KIT_SETUP_SECRET. Without one, the
+   * App makes a secret at first start and passes it to `log` once.
+   */
+  setupSecret?: string;
+  /** Where the App writes its few messages. Defaults to console.log. */
+  log?: (line: string) => void;
 };
 
 export type App = {
@@ -48,7 +60,10 @@ export type App = {
   sweepHolds(): Promise<Outcome[]>;
   /** Calls `listener` with every ChangeEvent; returns a function that stops it. */
   onChange(listener: (event: ChangeEvent) => void): () => void;
-  /** Answers HTTP: `/mcp` serves this App's Domains; `/events` streams ChangeEvents. */
+  /**
+   * Answers HTTP: `/mcp` serves this App's Domains to Connections; `/api/...`
+   * and `/events` serve the App's own page to the signed-in person.
+   */
   fetch(request: Request): Promise<Response>;
   /** Serves `fetch` on Node's http. Port 0 picks a free port. */
   listen(port: number, host?: string): Promise<string>;
@@ -63,6 +78,9 @@ export async function createApp(options: AppOptions): Promise<App> {
   const remotes = await Promise.all((options.plugins ?? []).map((p) => remoteSource(p)));
   const plugins: Plugin[] = [];
   for (const source of remotes) plugins.push({ contract: await source.contract(), source });
+  const sessions = sqliteSessions(db, options.owner ?? { id: "owner" });
+  const made = sessions.setup(options.setupSecret);
+  if (made) (options.log ?? console.log)(`Setup secret (shown once): ${made}`);
   const listeners = new Set<(event: ChangeEvent) => void>();
   const calls = createCalls({
     store,
@@ -117,10 +135,17 @@ export async function createApp(options: AppOptions): Promise<App> {
   };
   const streams = new Set<ReadableStreamDefaultController<Uint8Array>>();
 
+  const ui = uiRoutes({ calls, store, sessions, runtime: options.runtime });
+
   const fetch = async (request: Request) => {
     const { pathname } = new URL(request.url);
     if (pathname === "/mcp") return mcp(request);
-    if (pathname === "/events" && request.method === "GET") return events();
+    if (pathname === "/events" && request.method === "GET") {
+      if (!(await ui.principalOf(request))) return new Response("Sign in first.", { status: 401 });
+      return events();
+    }
+    const answered = await ui.handle(request);
+    if (answered) return answered;
     return new Response("Not found", { status: 404 });
   };
 

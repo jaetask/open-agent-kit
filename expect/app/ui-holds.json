@@ -1,0 +1,26 @@
+{
+  "steps": [
+    {
+      "sign_in": "expect-setup-secret"
+    },
+    {
+      "chat": {
+        "to": "t1",
+        "text": "call notes.add-note {\"text\":\"milk\"}\ncall notes.delete-note {\"id\":\"n1\"}"
+      }
+    },
+    {
+      "holds": true
+    },
+    {
+      "decide": {
+        "to": "t1",
+        "call": "t1-r1-c2",
+        "decision": "no"
+      }
+    },
+    {
+      "holds": true
+    }
+  ]
+}

@@ -1,6 +1,9 @@
 {
   "steps": [
     {
+      "sign_in": "expect-setup-secret"
+    },
+    {
       "ui": {
         "id": "u1",
         "action": "notes.add-note",
