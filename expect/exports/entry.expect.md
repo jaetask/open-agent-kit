@@ -13,6 +13,7 @@
 | CARD_VIEW_SCHEMAS |
 | CONNECTION_MACHINE |
 | EFFECTS |
+| agentContext |
 | cardHtml |
 | cardText |
 | cardView |

@@ -354,3 +354,9 @@ The Host, started with `connect` (the example reads `KIT_CONNECT`, a comma-separ
 - A Plugin taken out is also taken out of the Runtime with `runtime.uninstall`, so the agent is not offered Actions it cannot call; accepting a new version installs it again.
 
 `expect/pairing/pair-upgrade-revoke` runs it between two Apps: pairing, approval, a Call by the Host's agent, a minor upgrade, a major upgrade held back (the agent's Call never reaches the pipeline) and then accepted, and a revoked Connection. `expect/pairing/limits` shows the cap, the host name check, expiry and single-use claims.
+
+### The agent's context and model
+
+- `agentContext(contract)` is what the agent is told about a Domain: its about text, and each Action as a tool with what it does (reads; changes; changes after the person says yes) and its description. The pi adapter adds it to the system prompt as one section per Domain. `expect/contract/notes.expect.md` shows it.
+- `modelsFromEnv(env)` from `/pi` picks the model. `KIT_MODEL` is `provider/model` from pi-ai's catalogue, and pi-ai's own providers read their keys from the environment (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY` and the others pi-ai lists). For an OpenAI-compatible server, such as a local model server, set `KIT_OPENAI_BASE_URL`, `KIT_MODEL=local/<model>` and, if it needs one, `KIT_OPENAI_API_KEY`.
+- Without a usable model the App still runs: no `KIT_MODEL`, a model pi-ai does not know, or a provider without a key gives a model that answers every message with what is missing (`expect/app/no-model`). The note it returns for the log never contains a key.

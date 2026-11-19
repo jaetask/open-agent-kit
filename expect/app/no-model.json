@@ -1,0 +1,23 @@
+{
+  "model": "none",
+  "steps": [
+    {
+      "sign_in": "expect-setup-secret"
+    },
+    {
+      "chat": {
+        "to": "t1",
+        "text": "add milk to my notes"
+      }
+    },
+    {
+      "ui": {
+        "id": "u1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "milk"
+        }
+      }
+    }
+  ]
+}

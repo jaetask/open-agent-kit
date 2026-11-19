@@ -75,6 +75,17 @@
 }
 ```
 
+### Agent context
+
+```text
+notes: Short notes, one list per Principal.
+Tools:
+- notes__list-notes (reads): List your notes.
+- notes__add-note (changes): Add a note.
+- notes__delete-note (changes, after the person says yes): Delete a note. It cannot be brought back.
+A tool that changes something after the person says yes waits for them; tell them what you asked for.
+```
+
 ### Schemas
 
 #### notes.list-notes

@@ -1,6 +1,6 @@
 // Renders the Kit's public values as Markdown for expect files.
 import { table } from "@jaetask/snap";
-import type { Contract, MachineDefinition } from "../src/index.js";
+import { agentContext, type Contract, type MachineDefinition } from "../src/index.js";
 
 const json = (value: unknown) => `\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
 
@@ -33,6 +33,8 @@ export function renderContract(c: Contract): string {
           c.cards.map((card) => [card.name, card.version, card.view.kind, card.about]),
         ),
     ...c.cards.flatMap((card) => [`#### Card ${card.name}`, json(card.view)]),
+    "### Agent context",
+    `\`\`\`text\n${agentContext(c)}\n\`\`\``,
     "### Schemas",
     ...c.actions.flatMap((a) => [
       `#### ${a.name}`,

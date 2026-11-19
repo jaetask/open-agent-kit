@@ -8,15 +8,19 @@ import {
   defineDoc,
   defineExtension,
   defineTool,
+  section,
   Harness,
   type Storage,
   type ToolExecutionApi,
 } from "@earendil-works/pi-durable";
+import { agentContext } from "../agent-context.js";
 import type { Call, CallId, Principal } from "../call.js";
 import type { Outcome } from "../outcome.js";
 import type { ActionSource, AgentRuntime, ConversationView } from "../runtime.js";
 import { toolName } from "../tool-name.js";
 import { type CallDetails, INPUT_KIND, type InputData, toView } from "./view.js";
+
+export { type ModelChoice, modelsFromEnv } from "./models.js";
 
 export type PiRuntimeOptions = {
   /** pi-durable storage, such as `openNodeSqliteStorage(path, { prefix: "pi_" })`. */
@@ -88,6 +92,8 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
     const contract = await source.contract();
     return defineExtension({
       name: contract.domain,
+      // What the agent is told about this Domain, in the system prompt.
+      sections: [section(`kit-${contract.domain}`, () => agentContext(contract))],
       tools: contract.actions.map((action) => {
         const { $schema: _, ...parameters } = action.input;
         tools.add(toolName(action.name));

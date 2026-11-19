@@ -3,6 +3,7 @@
  * layer's interface and GLOSSARY.md for the words.
  */
 export type { Action, AnyAction, Effect, RunContext } from "./action.js";
+export { agentContext } from "./agent-context.js";
 export { defineAction, EFFECTS } from "./action.js";
 export type { ActionName, Call, Caller, CallId, Principal } from "./call.js";
 export type { CallEvent, CallState } from "./call-machine.js";

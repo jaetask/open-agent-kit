@@ -12,7 +12,7 @@ import { sqliteNotes } from "../examples/notes/notes.js";
 import { type App, createApp } from "../src/app/index.js";
 import { type ConversationView, type Decision, provide } from "../src/index.js";
 import { remoteSource } from "../src/mcp/index.js";
-import { piRuntime } from "../src/pi/index.js";
+import { modelsFromEnv, piRuntime } from "../src/pi/index.js";
 import { scriptedModels } from "./pi.js";
 import { describe, scriptPlan } from "./runtime.js";
 
@@ -39,7 +39,7 @@ type Step =
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
 
 export async function runApp(input: string): Promise<string> {
-  const { steps } = JSON.parse(input) as { steps: Step[] };
+  const { steps, model } = JSON.parse(input) as { steps: Step[]; model?: "none" };
   const dir = mkdtempSync(join(tmpdir(), "kit-app-"));
   let clock = Date.parse("2026-01-01T00:00:00Z");
   const now = () => clock;
@@ -103,7 +103,12 @@ export async function runApp(input: string): Promise<string> {
       owner: { id: "p1" },
       setupSecret: "expect-setup-secret",
       domains: [provide(notesDomain, (db: DatabaseSync) => ({ notes: sqliteNotes(db) }))],
-      runtime: piRuntime({ storage, now, ...scriptedModels(scriptPlan) }),
+      runtime: piRuntime({
+        storage,
+        now,
+        // "none": the App as started with no model configured.
+        ...(model === "none" ? await modelsFromEnv({}) : scriptedModels(scriptPlan)),
+      }),
     });
     url = await app.listen(0);
     for (const to of views.keys()) app.runtime?.watch(to, (v) => views.set(to, v));

@@ -69,6 +69,15 @@
 }
 ```
 
+### Agent context
+
+```text
+notes: Notes.
+Tools:
+- notes__add-note (changes): Add a note.
+A tool that changes something after the person says yes waits for them; tell them what you asked for.
+```
+
 ### Schemas
 
 #### notes.add-note
