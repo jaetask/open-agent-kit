@@ -32,7 +32,7 @@ const notesDomain = defineDomain({
 
 - `defineAction` takes seven fields: `name`, `description`, `effect`, `input`, `output`, an optional `card` and `run`. Input and output are zod schemas.
 - `run(input, context)` receives the parsed input and a `RunContext<Deps>`: the Principal, the Call id (`callId`), `change()` and the Domain's dependencies. Annotate the context to declare which dependencies an Action needs. It returns a value or a promise of one.
-- `defineCard` takes a `name`, a whole-number `version` from 1 and an `about` line.
+- `defineCard` takes a `name`, a whole-number `version` from 1, an `about` line and a `view` (layer 6).
 - `defineDomain` takes a `name`, a semver `version`, an `about` line, its Actions and its Cards.
 - Names are kebab-case. Each define function checks its input, throws an `Error` that names the definition and the problem, and returns a frozen value. The checks are listed in `expect/definitions`.
 
@@ -52,7 +52,7 @@ const notesDomain = defineDomain({
 | `Reason` | `{ code, message }`; the message is safe to show to a person |
 | `Change` | `{ kind, subject, id }`, where `kind` is `created`, `updated` or `deleted` |
 | `Hold` | `{ id, action }` |
-| `CardView` | `{ card, version, data }`: a Card filled with JSON data |
+| `CardView` | a Card filled from one Outcome; see layer 6 |
 | `Json` | any value that survives a JSON round trip |
 
 `src/language.test.ts` lists what must not compile, such as an unknown Effect, a Call without a Principal, or a failed Outcome without a Reason.
@@ -251,3 +251,44 @@ The owning App trusts the Host only as far as the Connection says:
 - `expect/calls`: every Call script also runs with each invoke sent over MCP, one Connection per Principal, and must render exactly as on the local pipeline.
 - `expect/mcp`: the tool list and the Contract resource; refusals for no token, a wrong token, a revoked Connection, an unapproved one, and an Effect out of scope; an unknown tool; a retry with the same Call id; a danger Call held in the owning App, and one decided by the Host; and a Principal taken from the Connection.
 - `expect/apps`: two Apps on localhost. An agent in one, on pi-durable, uses the other's Domain as a Plugin; its danger Call is held and decided in the first App and runs once in the second.
+
+## Layer 6: Cards
+
+A Card says how an Outcome is shown, as plain data:
+
+```ts
+const noteList = defineCard({
+  name: "note-list",
+  version: 1,
+  about: "A list of notes.",
+  view: { kind: "list", title: "Notes", fields: [{ label: "Note", path: "text" }, { label: "Id", path: "id" }] },
+});
+```
+
+### The catalogue
+
+`view` is one kind from a closed catalogue, version `CARD_CATALOGUE` (1):
+
+| Kind | Definition | Filled from |
+| --- | --- | --- |
+| `list` | `title`, `fields: [{ label, path }]` (at least one) | an output that is an array: one row per item |
+| `record` | `title`, `fields: [{ label, path }]` (at least one) | an output that is an object |
+| `change` | `title` | the Outcome's Changes |
+
+- `CARD_VIEW_SCHEMAS` holds each kind's JSON Schema. `defineCard` checks the view against it: an unknown kind, an unknown key, a missing title or field, or a bad path is a definition error.
+- A path is keys joined by dots (`text`, `meta.owner`). There are no expressions, indexes, templates, markup, URLs or scripts.
+- Every value is text: a string as it is, a number or boolean as written, a missing value as empty, an object or array as JSON.
+
+### Filling and drawing a Card
+
+- `cardView(card, { output, changes })` is pure. It returns the `CardView`: the Card's `card`, `version`, `catalogue`, `kind` and `title`; `columns` and `rows`, or `fields`, or `changes`; and `text`, the whole Card as plain text. The pipeline puts it on every succeeded Outcome of an Action that names a Card.
+- The Contract carries each Card's definition and the catalogue version. An Outcome sent over MCP carries the filled `CardView`, so a Host draws exactly the Card the owning App made.
+- `knowsCard(view)` is true for a known kind at this catalogue version or an earlier one. A Host that does not know a view shows `cardText(view)`, which is its `text`, so nothing fails to display.
+- `cardHtml(view)` returns static HTML: escaped text in `section`, `h3`, `table`, `dl` and `ul` elements with `kit-card` class names, and no scripts, styles or links. A view it does not know becomes its text in a `pre`. It is in the core, with no framework: React components would add a peer dependency and a JSX build for the same markup, so the Kit does not ship them.
+
+### Proofs
+
+- `expect/cards`: each kind filled from the notes example; an empty list; a script tag and markdown shown as literal text; an unknown kind and a newer catalogue version falling back to text.
+- `expect/definitions`: `with-cards`, and error cases for an unknown kind, an unknown key, a bad path, a template in a path, no fields, no title and no view.
+- `expect/contract/notes.expect.md` shows the Card views and the catalogue version.
+- `expect/apps`: the Host draws each Card from the Outcome it received over MCP, and the case fails unless it is identical to the Card the owning App made.

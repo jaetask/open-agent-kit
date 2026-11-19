@@ -5,6 +5,7 @@ import { snap } from "@jaetask/snap";
 import { CALL_MACHINE, contract, type Domain, fakeRuntime } from "../src/index.js";
 import { runApps } from "./apps.js";
 import { renderScript } from "./calls.js";
+import { renderCard } from "./cards.js";
 import { buildDomain } from "./definitions.js";
 import { runMcp } from "./mcp.js";
 import { piFactory } from "./pi.js";
@@ -69,6 +70,11 @@ const failed = await snap([
     // Two Apps: an agent in one uses the other's Actions over MCP.
     dir: "expect/apps",
     render: runApps,
+  },
+  {
+    // Cards: Outcome in, CardView, text and HTML out.
+    dir: "expect/cards",
+    render: renderCard,
   },
 ]);
 process.exit(failed === 0 ? 0 : 1);

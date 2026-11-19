@@ -1,0 +1,30 @@
+{
+  "name": "notes",
+  "version": "1.0.0",
+  "about": "Notes.",
+  "actions": [
+    {
+      "name": "add-note",
+      "description": "Add a note.",
+      "effect": "write",
+      "card": "note"
+    }
+  ],
+  "cards": [
+    {
+      "name": "note",
+      "version": 1,
+      "about": "One note.",
+      "view": {
+        "kind": "record",
+        "title": "Note",
+        "fields": [
+          {
+            "label": "Text",
+            "path": "items[0].text"
+          }
+        ]
+      }
+    }
+  ]
+}

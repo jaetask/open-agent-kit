@@ -2,6 +2,22 @@
   "name": "notes",
   "version": "1.0.0",
   "about": "Notes.",
-  "actions": [{ "name": "add-note", "description": "Add a note.", "effect": "write" }],
-  "cards": [{ "name": "note", "version": 0, "about": "One note." }]
+  "actions": [
+    {
+      "name": "add-note",
+      "description": "Add a note.",
+      "effect": "write"
+    }
+  ],
+  "cards": [
+    {
+      "name": "note",
+      "version": 0,
+      "about": "One note.",
+      "view": {
+        "kind": "change",
+        "title": "Note"
+      }
+    }
+  ]
 }

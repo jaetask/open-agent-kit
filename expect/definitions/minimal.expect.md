@@ -8,9 +8,9 @@
 
 ### Domain
 
-| domain | version | about |
-| --- | --- | --- |
-| notes | 1.0.0 | Notes. |
+| domain | version | card catalogue | about |
+| --- | --- | --- | --- |
+| notes | 1.0.0 | 1 | Notes. |
 
 ### Actions
 

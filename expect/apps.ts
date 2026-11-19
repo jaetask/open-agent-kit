@@ -10,6 +10,7 @@ import { notesDomain } from "../examples/notes/domain.js";
 import { sqliteNotes } from "../examples/notes/notes.js";
 import {
   type CallStore,
+  cardHtml,
   type ConversationView,
   createCalls,
   type Decision,
@@ -118,8 +119,25 @@ export async function runApps(input: string): Promise<string> {
         view.messages.map((m, k) => `${k + 1}. ${describe(m)}`).join("\n"),
       );
     }
+    // talk draws each Card from the Outcome it received over MCP. It must be
+    // the Card tasks made for the same Call.
+    const drawn: string[] = [];
+    for (const id of unique) {
+      const here = (await talkStore.get(id))?.outcome;
+      const there = (await tasksStore.get(id))?.outcome;
+      if (here?.state !== "succeeded" || !here.card) continue;
+      if (
+        JSON.stringify(here.card) !==
+        JSON.stringify(there?.state === "succeeded" ? there.card : null)
+      ) {
+        throw new Error(`talk's Card for ${id} differs from tasks' Card`);
+      }
+      drawn.push(`${id}:`, `\`\`\`html\n${cardHtml(here.card)}\n\`\`\``);
+    }
     const notes = sqliteNotes(db).list("p1");
     sections.push(
+      "### talk draws tasks' Cards (identical to the Cards tasks made)",
+      drawn.join("\n\n"),
       "### talk: its Calls",
       await records(talkStore, unique, hosts),
       "### tasks: its Calls",

@@ -1,4 +1,5 @@
 import type { ActionName, CallId } from "./call.js";
+import type { CardView } from "./card.js";
 
 /** A value that survives JSON.stringify and JSON.parse unchanged. */
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
@@ -14,9 +15,6 @@ export type Hold = { id: CallId; action: ActionName; input: unknown; expiresAt: 
 
 /** A person's yes or no on a Hold, or its expiry. */
 export type Decision = "yes" | "no" | "expired";
-
-/** A Card filled with data: how one Outcome is shown. */
-export type CardView = { card: string; version: number; data: Json };
 
 /** The final value of a Call. Errors are values, never thrown. */
 export type Outcome =

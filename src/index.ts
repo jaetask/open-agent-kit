@@ -9,8 +9,16 @@ export type { CallEvent, CallState } from "./call-machine.js";
 export { CALL_MACHINE } from "./call-machine.js";
 export type { Calls, CallsOptions, Plugin, Provided } from "./calls.js";
 export { createCalls, provide } from "./calls.js";
-export type { Card } from "./card.js";
-export { defineCard } from "./card.js";
+export type { Card, CardDefinitionView, CardView } from "./card.js";
+export {
+  CARD_CATALOGUE,
+  CARD_VIEW_SCHEMAS,
+  cardText,
+  cardView,
+  defineCard,
+  knowsCard,
+} from "./card.js";
+export { cardHtml } from "./card-html.js";
 export type {
   Connection,
   ConnectionEvent,
@@ -28,7 +36,7 @@ export type { Plan } from "./fake-runtime.js";
 export { fakeRuntime } from "./fake-runtime.js";
 export { localSource, pluginSource } from "./local-source.js";
 export type { MachineDefinition } from "./machine.js";
-export type { CardView, Change, Decision, Hold, Json, Outcome, Reason } from "./outcome.js";
+export type { Change, Decision, Hold, Json, Outcome, Reason } from "./outcome.js";
 export type {
   ActionSource,
   AgentRuntime,

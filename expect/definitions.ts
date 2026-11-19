@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { type AnyAction, type Card, defineAction, defineCard, defineDomain } from "../src/index.js";
 
-type CardData = { name: string; version: number; about: string };
+type CardData = { name: string; version: number; about: string; view: Card["view"] };
 type ActionData = { name: string; description: string; effect: string; card?: string | CardData };
 type DomainData = {
   name: string;
@@ -31,5 +31,11 @@ export function buildDomain(data: DomainData) {
       run: () => ({}),
     } as unknown as AnyAction);
   });
-  return defineDomain({ ...data, actions, ...(data.cards ? { cards } : {}) });
+  return defineDomain({
+    name: data.name,
+    version: data.version,
+    about: data.about,
+    actions,
+    cards,
+  });
 }

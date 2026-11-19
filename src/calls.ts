@@ -1,6 +1,7 @@
 import type { AnyAction, Effect } from "./action.js";
 import type { Call, CallId } from "./call.js";
 import { CALL_MACHINE, type CallEvent } from "./call-machine.js";
+import { cardView } from "./card.js";
 import type { Contract } from "./contract.js";
 import type { Domain } from "./domain.js";
 import { isFinal, next } from "./machine.js";
@@ -147,9 +148,7 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     ended(done, "DONE", {
       state: "succeeded",
       output: output_,
-      ...(action.card
-        ? { card: { card: action.card.name, version: action.card.version, data: output_ } }
-        : {}),
+      ...(action.card ? { card: cardView(action.card, { output: output_, changes }) } : {}),
       changes,
     });
     return done;

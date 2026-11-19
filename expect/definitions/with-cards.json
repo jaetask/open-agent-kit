@@ -1,0 +1,58 @@
+{
+  "name": "notes",
+  "version": "1.0.0",
+  "about": "Notes.",
+  "actions": [
+    {
+      "name": "add-note",
+      "description": "Add a note.",
+      "effect": "write",
+      "card": "note"
+    }
+  ],
+  "cards": [
+    {
+      "name": "note",
+      "version": 1,
+      "about": "One note.",
+      "view": {
+        "kind": "record",
+        "title": "Note",
+        "fields": [
+          {
+            "label": "Text",
+            "path": "text"
+          },
+          {
+            "label": "Owner",
+            "path": "meta.owner"
+          }
+        ]
+      }
+    },
+    {
+      "name": "notes",
+      "version": 2,
+      "about": "Notes.",
+      "view": {
+        "kind": "list",
+        "title": "Notes",
+        "fields": [
+          {
+            "label": "Text",
+            "path": "text"
+          }
+        ]
+      }
+    },
+    {
+      "name": "changed",
+      "version": 1,
+      "about": "Changes.",
+      "view": {
+        "kind": "change",
+        "title": "Changed"
+      }
+    }
+  ]
+}

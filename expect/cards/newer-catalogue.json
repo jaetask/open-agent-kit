@@ -1,0 +1,16 @@
+{
+  "view": {
+    "card": "note",
+    "version": 2,
+    "catalogue": 2,
+    "kind": "record",
+    "title": "Note",
+    "fields": [
+      {
+        "label": "Text",
+        "value": "milk"
+      }
+    ],
+    "text": "Note\nText: milk"
+  }
+}

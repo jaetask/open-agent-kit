@@ -4,8 +4,38 @@ import { z } from "zod";
 import { defineAction, defineCard, defineDomain, type RunContext } from "../../src/index.js";
 import { Note, type NotesDeps } from "./notes.js";
 
-export const noteList = defineCard({ name: "note-list", version: 1, about: "A list of notes." });
-export const noteCard = defineCard({ name: "note", version: 1, about: "One note." });
+export const noteList = defineCard({
+  name: "note-list",
+  version: 1,
+  about: "A list of notes.",
+  view: {
+    kind: "list",
+    title: "Notes",
+    fields: [
+      { label: "Note", path: "text" },
+      { label: "Id", path: "id" },
+    ],
+  },
+});
+export const noteCard = defineCard({
+  name: "note",
+  version: 1,
+  about: "One note.",
+  view: {
+    kind: "record",
+    title: "Note",
+    fields: [
+      { label: "Text", path: "text" },
+      { label: "Id", path: "id" },
+    ],
+  },
+});
+export const notesChanged = defineCard({
+  name: "notes-changed",
+  version: 1,
+  about: "What a Call changed in the notes.",
+  view: { kind: "change", title: "Notes changed" },
+});
 
 export const listNotes = defineAction({
   name: "list-notes",
@@ -37,6 +67,7 @@ export const deleteNote = defineAction({
   effect: "danger",
   input: z.object({ id: z.string() }),
   output: z.object({ deleted: z.boolean() }),
+  card: notesChanged,
   run: ({ id }, { principal, notes, change }: RunContext<NotesDeps>) => {
     const deleted = notes.remove(principal.id, id);
     if (deleted) change({ kind: "deleted", subject: "note", id });
@@ -49,7 +80,7 @@ export const notesDomain = defineDomain({
   version: "1.0.0",
   about: "Short notes, one list per Principal.",
   actions: [listNotes, addNote, deleteNote],
-  cards: [noteList, noteCard],
+  cards: [noteList, noteCard, notesChanged],
   // A guest may read; only signed-in Principals may change notes.
   authorise: (principal, action) => principal.id !== "guest" || action.effect === "read",
 });

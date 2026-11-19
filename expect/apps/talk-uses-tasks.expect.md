@@ -23,6 +23,32 @@ Status: idle.
 6. call t1-r1-c4 notes.list-notes: succeeded [{"id":"n2","owner":"p1","text":"bread"}]
 7. agent: "Done."
 
+### talk draws tasks' Cards (identical to the Cards tasks made)
+
+t1-r1-c1:
+
+```html
+<section class="kit-card kit-card-record"><h3 class="kit-card-title">Note</h3><dl><dt>Text</dt><dd>milk</dd><dt>Id</dt><dd>n1</dd></dl></section>
+```
+
+t1-r1-c2:
+
+```html
+<section class="kit-card kit-card-change"><h3 class="kit-card-title">Notes changed</h3><ul><li>deleted note n1</li></ul></section>
+```
+
+t1-r1-c3:
+
+```html
+<section class="kit-card kit-card-record"><h3 class="kit-card-title">Note</h3><dl><dt>Text</dt><dd>bread</dd><dt>Id</dt><dd>n2</dd></dl></section>
+```
+
+t1-r1-c4:
+
+```html
+<section class="kit-card kit-card-list"><h3 class="kit-card-title">Notes</h3><table><thead><tr><th>Note</th><th>Id</th></tr></thead><tbody><tr><td>bread</td><td>n2</td></tr></tbody></table></section>
+```
+
 ### talk: its Calls
 
 | call | connection | state | transitions |

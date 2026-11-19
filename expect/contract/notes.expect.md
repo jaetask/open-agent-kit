@@ -8,9 +8,9 @@
 
 ### Domain
 
-| domain | version | about |
-| --- | --- | --- |
-| notes | 1.0.0 | Short notes, one list per Principal. |
+| domain | version | card catalogue | about |
+| --- | --- | --- | --- |
+| notes | 1.0.0 | 1 | Short notes, one list per Principal. |
 
 ### Actions
 
@@ -18,14 +18,62 @@
 | --- | --- | --- | --- |
 | notes.list-notes | read | note-list | List your notes. |
 | notes.add-note | write | note | Add a note. |
-| notes.delete-note | danger |  | Delete a note. It cannot be brought back. |
+| notes.delete-note | danger | notes-changed | Delete a note. It cannot be brought back. |
 
 ### Cards
 
-| card | version | about |
-| --- | --- | --- |
-| note-list | 1 | A list of notes. |
-| note | 1 | One note. |
+| card | version | view | about |
+| --- | --- | --- | --- |
+| note-list | 1 | list | A list of notes. |
+| note | 1 | record | One note. |
+| notes-changed | 1 | change | What a Call changed in the notes. |
+
+#### Card note-list
+
+```json
+{
+  "kind": "list",
+  "title": "Notes",
+  "fields": [
+    {
+      "label": "Note",
+      "path": "text"
+    },
+    {
+      "label": "Id",
+      "path": "id"
+    }
+  ]
+}
+```
+
+#### Card note
+
+```json
+{
+  "kind": "record",
+  "title": "Note",
+  "fields": [
+    {
+      "label": "Text",
+      "path": "text"
+    },
+    {
+      "label": "Id",
+      "path": "id"
+    }
+  ]
+}
+```
+
+#### Card notes-changed
+
+```json
+{
+  "kind": "change",
+  "title": "Notes changed"
+}
+```
 
 ### Schemas
 

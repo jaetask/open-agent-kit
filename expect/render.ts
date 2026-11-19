@@ -16,7 +16,10 @@ export function renderExports(mod: object): string {
 export function renderContract(c: Contract): string {
   return [
     "### Domain",
-    table(["domain", "version", "about"], [[c.domain, c.version, c.about]]),
+    table(
+      ["domain", "version", "card catalogue", "about"],
+      [[c.domain, c.version, c.catalogue, c.about]],
+    ),
     "### Actions",
     table(
       ["action", "effect", "card", "description"],
@@ -26,9 +29,10 @@ export function renderContract(c: Contract): string {
     c.cards.length === 0
       ? "None."
       : table(
-          ["card", "version", "about"],
-          c.cards.map((card) => [card.name, card.version, card.about]),
+          ["card", "version", "view", "about"],
+          c.cards.map((card) => [card.name, card.version, card.view.kind, card.about]),
         ),
+    ...c.cards.flatMap((card) => [`#### Card ${card.name}`, json(card.view)]),
     "### Schemas",
     ...c.actions.flatMap((a) => [
       `#### ${a.name}`,

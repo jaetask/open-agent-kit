@@ -1,0 +1,11 @@
+{
+  "view": {
+    "card": "chart",
+    "version": 1,
+    "catalogue": 2,
+    "kind": "chart",
+    "title": "Notes per day",
+    "text": "Notes per day\nMon 3 \u00b7 Tue 5",
+    "points": [3, 5]
+  }
+}

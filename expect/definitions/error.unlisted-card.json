@@ -7,7 +7,15 @@
       "name": "add-note",
       "description": "Add a note.",
       "effect": "write",
-      "card": { "name": "note", "version": 1, "about": "One note." }
+      "card": {
+        "name": "note",
+        "version": 1,
+        "about": "One note.",
+        "view": {
+          "kind": "change",
+          "title": "Note"
+        }
+      }
     }
   ]
 }

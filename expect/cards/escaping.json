@@ -1,0 +1,18 @@
+{
+  "card": "note-list",
+  "outcome": {
+    "output": [
+      {
+        "id": "n1",
+        "owner": "p1",
+        "text": "<script>alert('x')</script>"
+      },
+      {
+        "id": "n2",
+        "owner": "p1",
+        "text": "**bold** [link](https://example.com) & <b>tag</b>"
+      }
+    ],
+    "changes": []
+  }
+}

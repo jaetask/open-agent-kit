@@ -27,6 +27,7 @@
 ```json
 {
   "domain": "notes",
+  "catalogue": 1,
   "version": "1.0.0",
   "about": "Short notes, one list per Principal.",
   "actions": [
@@ -133,19 +134,57 @@
           "deleted"
         ],
         "additionalProperties": false
-      }
+      },
+      "card": "notes-changed"
     }
   ],
   "cards": [
     {
       "name": "note-list",
       "version": 1,
-      "about": "A list of notes."
+      "about": "A list of notes.",
+      "view": {
+        "kind": "list",
+        "title": "Notes",
+        "fields": [
+          {
+            "label": "Note",
+            "path": "text"
+          },
+          {
+            "label": "Id",
+            "path": "id"
+          }
+        ]
+      }
     },
     {
       "name": "note",
       "version": 1,
-      "about": "One note."
+      "about": "One note.",
+      "view": {
+        "kind": "record",
+        "title": "Note",
+        "fields": [
+          {
+            "label": "Text",
+            "path": "text"
+          },
+          {
+            "label": "Id",
+            "path": "id"
+          }
+        ]
+      }
+    },
+    {
+      "name": "notes-changed",
+      "version": 1,
+      "about": "What a Call changed in the notes.",
+      "view": {
+        "kind": "change",
+        "title": "Notes changed"
+      }
     }
   ]
 }

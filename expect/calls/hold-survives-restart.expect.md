@@ -12,7 +12,7 @@
 2. invoke c2 notes.delete-note {"id":"n1"} as p1 → held until 2026-01-02T00:00:00.000Z
 3. restart
 4. invoke c2 notes.delete-note {"id":"n1"} as p1 → held until 2026-01-02T00:00:00.000Z
-5. decide c2 yes → succeeded: {"deleted":true}; changes [{"kind":"deleted","subject":"note","id":"n1"}]
+5. decide c2 yes → succeeded: {"deleted":true}; card notes-changed v1; changes [{"kind":"deleted","subject":"note","id":"n1"}]
 
 ### Calls
 

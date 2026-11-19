@@ -420,7 +420,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
     <div class="rules">
       <div class="card"><h3>The deletion test</h3><p>Delete the pipeline and validation, authorisation, gating, audit and dedupe reappear in four callers. Delete a caller adapter and nothing else changes.</p></div>
       <div class="card"><h3>The interface is the test surface</h3><p>Tests call <code>invoke()</code> and assert on the result. Nothing reaches past it, and nothing needs a model, a network or pi-durable.</p></div>
-      <div class="card"><h3>One package, four entry points</h3><p>One npm package, <code>@jaetask/open-agent-kit</code>. The root is the core (pipeline, domains, seams). Adapters are subpaths with optional peer dependencies: <code>/pi</code> (runtime adapter), <code>/mcp</code> (server and plugin client), <code>/react</code> (cards and chat). This page calls them <code>kit</code>, <code>kit-pi</code>, <code>kit-mcp</code> and <code>kit-react</code> for short. Plus machina.</p></div>
+      <div class="card"><h3>One package, four entry points</h3><p>One npm package, <code>@jaetask/open-agent-kit</code>. The root is the core (pipeline, domains, seams, Cards and their HTML). Adapters are subpaths: <code>/pi</code> (runtime adapter), <code>/mcp</code> (server and plugin client) and <code>/sqlite</code> (stores and Connections on <code>node:sqlite</code>); the first two have optional peer dependencies. This page calls them <code>kit</code>, <code>kit-pi</code> and <code>kit-mcp</code> for short.</p></div>
       <div class="card"><h3>What Kit does not handle</h3><p>Your database schema, your UI framework, organisations and roles, multi-node scale-out. An app brings its own repositories behind its own Domain.</p></div>
     </div>
   </div>
@@ -458,8 +458,8 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
   effect: <span class="k">"write"</span>,
   input: z.object({ title: z.string().min(1) }),
   output: Task,
-  card: changed(<span class="k">"created"</span>, <span class="k">"task"</span>),
-  run: ({ title }, { principal, tasks }) =>
+  card: taskCard,
+  run: ({ title }, { principal, tasks }: RunContext&lt;TasksDeps&gt;) =>
     tasks.create({ owner: principal.id, title }),
 });</pre>
 <pre><span class="c">// domains/tasks/domain.ts</span>
@@ -468,10 +468,10 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
   version: <span class="k">"1.0.0"</span>,
   about: <span class="k">"Tasks, projects and due dates."</span>,
   actions: [listTasks, createTask, deleteTask],
-  cards: [taskList],
-  <span class="c">// what run() receives besides the Principal</span>
-  provide: (app) => ({ tasks: app.repos.tasks }),
+  cards: [taskList, taskCard],
 });
+<span class="c">// what run() receives besides the Principal, from the App's database</span>
+createCalls({ store, domains: [provide(tasksDomain, (db) => ({ tasks: tasksIn(db) }))] });
 <span class="c">// The Contract is generated from this. Nobody writes one.</span></pre>
     </div>
     <p class="caption" style="margin-top:8px"><code>run()</code> accepts its dependencies and returns a value. It never sees a request, a model, pi-durable or MCP, so a Domain is testable with plain function calls. An Action has seven fields.</p>
@@ -655,7 +655,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
     </figure>
     <div class="grid3">
       <div class="card"><h3>Contract</h3><p>Generated from <code>defineDomain()</code> and served by the MCP endpoint as the resource <code>open-agent-kit://contract/&lt;domain&gt;</code>: Actions with Effects, Card specs, Domain version. Semver: removing an Action or changing its input is a major bump.</p></div>
-      <div class="card"><h3>Cards, in three tiers</h3><p>A JSON Card spec every host can draw, an optional React component compiled into trusted hosts, and text with a link as the floor. A remote app can send data, never code.</p></div>
+      <div class="card"><h3>Cards, in two tiers</h3><p>A CardView in JSON, from a closed catalogue of view kinds (list, record, change), that every host draws with its own components; the core's <code>cardHtml</code> is one such renderer. Its text is the floor, for a host that does not know the kind or the catalogue version. A remote app can send data, never code.</p></div>
       <div class="card"><h3>Connection</h3><p>Made by pairing: the person approves in Tasks, Tasks mints a token scoped to them and to the Effects allowed. Tasks keeps only a hash of the token. Its lifecycle (pairing, connected, revoked) is a second MachineDefinition.</p></div>
     </div>
 <pre style="margin-top:18px"><span class="c"># docker-compose.yml: someone who wants Tasks and Talk</span>
@@ -799,7 +799,7 @@ const P = [
   "A host never asserts identity. It presents a Connection token that Tasks itself minted when the person paired, scoped to that Principal and to chosen Effects. Tasks' pipeline authenticates and authorises every Call again. Revoking the Connection in Tasks cuts the host off at once. Cost: pairing is a manual step per pair of apps."],
  ["“Remote cards are remote code execution with extra steps.”",
   "If Tasks can ship UI into Talk, a compromised Tasks owns Talk's page.",
-  "A Card that crosses a Connection is JSON drawn by the host's own components, from a closed set of element types. React Card components exist only as packages a host chose to compile in. There is no iframe tier and no remote script in version 1. Cost: third-party apps get plainer cards than first-party ones."],
+  "A Card that crosses a Connection is JSON drawn by the host's own components, from a closed catalogue of view kinds. Its values come from the output by simple paths and are always shown as text. There is no markup, no template, no iframe and no remote script. Cost: third-party apps get plainer cards than first-party ones."],
  ["“Your gate is in the wrong app.”",
   "Talk holds the danger Call, but Tasks owns the data. A rogue host skips the Hold.",
   "The Hold is a courtesy to the person; the Connection scope is the control. A Connection without the danger Effect cannot run danger Actions at all, whatever the host does. With it, the person has delegated that judgement to this host: a danger Call that brings the host's yes runs, and one without it is held in Tasks. Tasks records which host and Principal made every Call, so it can list what a Connection did, revoked or not. Cost: delegation is per Effect, not per Action, in version 1."],

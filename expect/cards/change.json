@@ -1,0 +1,15 @@
+{
+  "card": "notes-changed",
+  "outcome": {
+    "output": {
+      "deleted": true
+    },
+    "changes": [
+      {
+        "kind": "deleted",
+        "subject": "note",
+        "id": "n1"
+      }
+    ]
+  }
+}

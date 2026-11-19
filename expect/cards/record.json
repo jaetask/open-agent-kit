@@ -1,0 +1,17 @@
+{
+  "card": "note",
+  "outcome": {
+    "output": {
+      "id": "n1",
+      "owner": "p1",
+      "text": "milk"
+    },
+    "changes": [
+      {
+        "kind": "created",
+        "subject": "note",
+        "id": "n1"
+      }
+    ]
+  }
+}
