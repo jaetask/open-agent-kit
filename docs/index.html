@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>open-agent-kit · Architecture</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: a long technical field guide. Sticky section rail on top, one column of prose,
-   interactive "bench" panels for the moving parts. Teal = pi-durable, plum = agent-native. */
+   interactive "bench" panels for the moving parts. Teal = pi-durable, plum = between apps. */
 :root{
   --bg:#f4f6f6; --panel:#ffffff; --sunk:#e9eeee; --ink:#13201f; --muted:#56676a; --line:#d3dcdc;
   --pi:#0d7a6f; --pi-soft:#d6efeb; --an:#8a3f78; --an-soft:#f3e2ef;
@@ -18,16 +19,6 @@
   --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#0f1716; --panel:#162120; --sunk:#1d2a29; --ink:#e3ecea; --muted:#9db0ae; --line:#2b3a39;
-  --pi:#4fc3b4; --pi-soft:#163a36; --an:#d792c6; --an-soft:#3a2135;
-  --ok:#7cc77f; --ok-soft:#1d3320; --warn:#e7ad57; --warn-soft:#3a2b14; --bad:#f08b83; --bad-soft:#3d1d1b;
-  color-scheme: dark; } }
-:root[data-theme="dark"]{
-  --bg:#0f1716; --panel:#162120; --sunk:#1d2a29; --ink:#e3ecea; --muted:#9db0ae; --line:#2b3a39;
-  --pi:#4fc3b4; --pi-soft:#163a36; --an:#d792c6; --an-soft:#3a2135;
-  --ok:#7cc77f; --ok-soft:#1d3320; --warn:#e7ad57; --warn-soft:#3a2b14; --bad:#f08b83; --bad-soft:#3d1d1b;
-  color-scheme: dark; }
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6}
@@ -64,7 +55,7 @@ header.hero{padding-block:48px 40px}
 .tag.an{border-color:var(--an);color:var(--an)}
 .answer{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:8px}
 .answer > div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
-.answer b{display:block;font-family:var(--display);font-size:1.05rem;margin-bottom:4px}
+.answer > div > b:first-child{display:block;font-family:var(--display);font-size:1.05rem;margin-bottom:4px}
 
 /* bench panels */
 .bench{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-top:22px}
@@ -279,11 +270,11 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
   <div class="stack">
     <span class="eyebrow">Architecture · design draft · <code>@jaetask/open-agent-kit</code>, "Kit" for short</span>
     <h1>Standalone apps on pi-durable, joined by MCP and cards</h1>
-    <p class="lede">Each app is one container with its own agent, actions, cards and MCP endpoint. Run one alone, or connect several into one experience. No agent-native dependency.</p>
+    <p class="lede">Each app is one container with its own agent, actions, cards and MCP endpoint. Run one alone, or connect several into one experience.</p>
     <div class="answer">
-      <div><b>One idea carries it</b>Every caller (UI, agent, another app, CLI) reaches a domain through one <b>Call pipeline</b>. Everything else is an adapter around that.</div>
-      <div><b>Three seams only</b>The agent runtime, identity, and where actions live (local or remote). Each has two real adapters from day one.</div>
-      <div><b>Built to be attacked</b>Small interfaces, visible state machines, no remote code execution, and a stated answer for each hard problem.</div>
+      <div><b>From a single idea</b>Every caller (UI, agent, another app, CLI) reaches a domain through one <b>Call pipeline</b>. Everything else is an adapter around that.</div>
+      <div><b>Three seams</b>The agent runtime, identity, and where actions live (local or remote). Each has two real adapters from day one.</div>
+      <div><b>Answers to the hard problems</b>Small interfaces, visible state machines, no remote code execution, and a stated answer for each hard problem.</div>
     </div>
   </div>
   <figure class="fig">
@@ -330,7 +321,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
   <div class="wrap">
     <div class="stack prose">
       <span class="eyebrow">1 · Ubiquitous language</span>
-      <h2>Fourteen words, used exactly</h2>
+      <h2>The glossary</h2>
       <p>This is the project's <code>GLOSSARY.md</code>, in Matt Pocock's format: one meaning per term, plus the words we don't use. Code, docs, tests and UI all use these names. Architecture words (<b>module</b>, <b>interface</b>, <b>seam</b>, <b>adapter</b>, <b>depth</b>) keep his definitions, and machina keeps its own (<b>MachineDefinition</b>, <b>Instance</b>).</p>
     </div>
     <div class="filters" style="margin-top:16px"><input id="glossSearch" type="search" placeholder="Filter terms" aria-label="Filter glossary terms"></div>
@@ -427,10 +418,10 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
       <figcaption>Matt Pocock's rule: one adapter is a hypothetical seam, two is a real one. Each seam here has two adapters we need on day one (the fake runtime is what the test suite runs on), so none of the three is speculative.</figcaption>
     </figure>
     <div class="rules">
-      <div class="card"><h3>The deletion test</h3><p>Delete the pipeline and validation, authorisation, gating, audit and dedupe reappear in four callers. It earns its place. Delete a caller adapter and nothing else changes.</p></div>
+      <div class="card"><h3>The deletion test</h3><p>Delete the pipeline and validation, authorisation, gating, audit and dedupe reappear in four callers. Delete a caller adapter and nothing else changes.</p></div>
       <div class="card"><h3>The interface is the test surface</h3><p>Tests call <code>invoke()</code> and assert on the result. Nothing reaches past it, and nothing needs a model, a network or pi-durable.</p></div>
       <div class="card"><h3>One package, four entry points</h3><p>One npm package, <code>@jaetask/open-agent-kit</code>. The root is the core (pipeline, domains, seams). Adapters are subpaths with optional peer dependencies: <code>/pi</code> (runtime adapter), <code>/mcp</code> (server and plugin client), <code>/react</code> (cards and chat). This page calls them <code>kit</code>, <code>kit-pi</code>, <code>kit-mcp</code> and <code>kit-react</code> for short. Plus machina.</p></div>
-      <div class="card"><h3>What Kit refuses to own</h3><p>Your database schema, your UI framework, organisations and roles, multi-node scale-out. An app brings its own repositories behind its own Domain.</p></div>
+      <div class="card"><h3>What Kit does not handle</h3><p>Your database schema, your UI framework, organisations and roles, multi-node scale-out. An app brings its own repositories behind its own Domain.</p></div>
     </div>
   </div>
 </section>
@@ -440,8 +431,8 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
   <div class="wrap">
     <div class="stack prose">
       <span class="eyebrow">3 · Actions</span>
-      <h2>The agent-native idea, with a smaller interface</h2>
-      <p>agent-native's best idea is that one Action definition serves every caller. Its cost is 39 options on <code>defineAction()</code>, many of which restate the same fact in different vocabularies (<code>readOnly</code>, <code>needsApproval</code>, <code>parallelSafe</code>, <code>mcpAnnotations</code>, <code>dedupe</code>, <code>changeEvents</code>). Kit states the fact once, as an <b>Effect</b>, and derives the rest.</p>
+      <h2>One Action definition for every caller</h2>
+      <p>One Action definition serves every caller: the UI, the agent, another app and the CLI. Each Action states what it does to the world once, as an <b>Effect</b>, and parallelism, crash safety, the Gate, audit and change events are derived from it.</p>
     </div>
     <figure class="fig">
       <div class="fig-scroll">
@@ -483,7 +474,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
 });
 <span class="c">// The Contract is generated from this. Nobody writes one.</span></pre>
     </div>
-    <p class="caption" style="margin-top:8px"><code>run()</code> accepts its dependencies and returns a value. It never sees a request, a model, pi-durable or MCP, so a Domain is testable with plain function calls. Seven fields against agent-native's thirty-nine.</p>
+    <p class="caption" style="margin-top:8px"><code>run()</code> accepts its dependencies and returns a value. It never sees a request, a model, pi-durable or MCP, so a Domain is testable with plain function calls. An Action has seven fields.</p>
   </div>
 </section>
 
@@ -568,7 +559,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
   <div class="wrap">
     <div class="stack prose">
       <span class="eyebrow">5 · The seams</span>
-      <h2>Three interfaces, each small enough to read at a glance</h2>
+      <h2>Three interfaces</h2>
       <p>pi-durable is experimental and changes between releases, so nothing outside <code>kit-pi</code> (the <code>/pi</code> entry point) may import it. The adapter is the only file set that moves when it changes, and the same conformance tests run against the fake and the real runtime.</p>
     </div>
     <div class="two">
@@ -685,7 +676,7 @@ services:
   <div class="wrap">
     <div class="stack prose">
       <span class="eyebrow">7 · Hard problems</span>
-      <h2>Where a critic will push, and the answer</h2>
+      <h2>Hard problems and how the design answers them</h2>
       <p>Each one is stated the way a hostile reviewer would put it. Open any to see the design's answer and what it costs.</p>
     </div>
     <div id="probs"></div>
@@ -697,7 +688,7 @@ services:
   <div class="wrap">
     <div class="stack prose">
       <span class="eyebrow">8 · Build plan</span>
-      <h2>Seven layers, each proven before the next</h2>
+      <h2>Seven layers, each with a proof</h2>
       <p>The repository starts empty. A layer is done when its proof is committed and green and its interface is written down; only then does the next one start. Proofs are expect tests (<code>@jaetask/snap</code>): one input file per case, with a human-approved <code>name.expect.md</code> beside it, so every claim on this page ends up as a folder of readable Markdown. One small example Domain with a read, a write and a danger Action is carried through every layer, so no layer is proven only on paper.</p>
     </div>
     <figure class="fig">
@@ -723,7 +714,7 @@ services:
 <footer>
   <div class="wrap stack" style="gap:6px">
     <p>Built on: pi-durable 1.5.2 (MIT), machina (MIT, core derived from Zag.js), Matt Pocock's codebase-design vocabulary and glossary format (github.com/mattpocock/skills), and what an earlier prototype of Talk on pi-durable already proved: one extension per app over MCP, a read/write/danger classifier, a durable danger gate and stored cards.</p>
-    <p>Ideas taken from agent-native: one Action definition for every caller. No agent-native code is carried over. This is a design; nothing has been built yet.</p>
+    <p>Inspired by agent-native's idea of one Action definition for every caller. The code is being added one layer at a time, each with its proof; see the build plan above.</p>
   </div>
 </footer>
 
@@ -816,18 +807,18 @@ const P = [
  ["“DDD is ceremony. Where are the aggregates and events?”",
   "Borrowing the vocabulary without the discipline.",
   "We take three things that pay for themselves: a glossary enforced in code, bounded Domains reached only through Actions, and a published Contract. Entities, aggregates and repositories are the app's own business inside a Domain; Kit neither requires nor inspects them. Outcomes carry Changes, which is as much domain-event machinery as version 1 needs."],
- ["“39 options became 7. You'll add them all back.”",
+ ["“You'll keep adding options until the interface is huge.”",
   "Small interfaces grow.",
-  "Each agent-native option was checked against Effect. Most restate it. The few that don't (<code>timeoutMs</code>, <code>featured</code> for small models, a custom Gate rule) are allowed as optional fields with one rule: a new field needs a second Domain that wants it. Presentation options became Cards. Transport options became adapters."],
+  "Most per-Action options (read-only, needs approval, parallel-safe, dedupe, change events) are facts about the Effect, so they are derived from it. The few that are not (<code>timeoutMs</code>, <code>featured</code> for small models, a custom Gate rule) are allowed as optional fields with one rule: a new field needs a second Domain that wants it. Presentation options became Cards. Transport options became adapters."],
  ["“Local models can't handle 200 tools from five plugins.”",
   "Context is small on the models these apps run on.",
   "Talk already solved this: each app offers a few core Actions and the rest wait behind search. In the Contract that is one flag, <code>featured</code>, plus the Domain's <code>about</code> text. The adapter maps the rest to pi-durable's deferred tools."],
  ["“The UI goes stale when the agent changes something.”",
-  "agent-native had a whole sync system for this.",
+  "Keeping a UI in sync with changes made elsewhere usually needs a sync system.",
   "Every succeeded write Outcome lists its Changes. The pipeline publishes them on one server-sent event stream per app, and the UI refetches what changed. It is one process, so there is no distributed sync to build. Cost: no offline or multi-device merge."],
  ["“Is this legally clean to open source?”",
   "Forked code and borrowed ideas.",
-  "pi-durable and machina's Zag core are MIT, with notices kept. The Talk web shell began from an MIT project and says so. From agent-native we take a design idea and no code, so its licence is not engaged."],
+  "pi-durable and machina's Zag core are MIT, with notices kept. The Talk web shell began from an MIT project and says so."],
 ];
 const ph=$("#probs");
 P.forEach(([q,a,b],i)=>{ const d=el("details","prob"); if(i===0) d.open=true;
