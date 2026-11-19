@@ -10,6 +10,7 @@ import { localSource, pluginSource } from "../local-source.js";
 import { remoteSource, type RemoteOptions } from "../mcp/client.js";
 import { nodeListener } from "../mcp/node.js";
 import { mcpServer } from "../mcp/server.js";
+import type { Outcome } from "../outcome.js";
 import type { AgentRuntime } from "../runtime.js";
 import { sqliteConnections, sqliteStore } from "../sqlite.js";
 import type { CallStore } from "../store.js";
@@ -29,6 +30,8 @@ export type AppOptions = {
   /** How long a Hold waits, in milliseconds, and the clock. See createCalls. */
   holdFor?: number;
   now?: () => number;
+  /** How often to expire overdue Holds, in milliseconds. Defaults to one minute; 0 turns it off. */
+  sweepEvery?: number;
 };
 
 export type App = {
@@ -38,6 +41,11 @@ export type App = {
   connections: Connections;
   plugins: Plugin[];
   runtime: AgentRuntime | undefined;
+  /**
+   * Expires every Hold whose time has passed, and gives each Outcome to the
+   * Runtime so a waiting conversation carries on. Returns the expired Outcomes.
+   */
+  sweepHolds(): Promise<Outcome[]>;
   /** Answers HTTP: `/mcp` serves this App's Domains. */
   fetch(request: Request): Promise<Response>;
   /** Serves `fetch` on Node's http. Port 0 picks a free port. */
@@ -79,8 +87,25 @@ export async function createApp(options: AppOptions): Promise<App> {
     return new Response("Not found", { status: 404 });
   };
 
+  const now = options.now ?? Date.now;
+  const sweepHolds = async () => {
+    const expired: Outcome[] = [];
+    for (const record of await store.held()) {
+      const hold = record.outcome?.state === "held" ? record.outcome.hold : undefined;
+      if (!hold || now() < Date.parse(hold.expiresAt)) continue;
+      const outcome = await calls.decide(record.call.id, "expired");
+      await options.runtime?.resume(record.call.id, outcome);
+      expired.push(outcome);
+    }
+    return expired;
+  };
+  const every = options.sweepEvery ?? 60_000;
+  const sweeper = every > 0 ? setInterval(() => void sweepHolds(), every) : undefined;
+  sweeper?.unref();
+
   let http: Server | undefined;
   return {
+    sweepHolds,
     db,
     store,
     calls,
@@ -94,6 +119,7 @@ export async function createApp(options: AppOptions): Promise<App> {
       return `http://${host}:${(http.address() as AddressInfo).port}`;
     },
     close: async () => {
+      clearInterval(sweeper);
       await options.runtime?.close();
       for (const source of remotes) await source.close();
       if (http) {

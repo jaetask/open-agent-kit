@@ -17,6 +17,9 @@ export function sqliteStore(db: DatabaseSync): CallStore<DatabaseSync> {
   const byConnection = db.prepare(
     "SELECT record FROM kit_calls WHERE json_extract(record, '$.call.connection') = ? ORDER BY rowid",
   );
+  const held = db.prepare(
+    "SELECT record FROM kit_calls WHERE json_extract(record, '$.state') = 'held' AND (?1 IS NULL OR json_extract(record, '$.call.principal.id') = ?1) ORDER BY rowid",
+  );
   const put = (record: CallRecord) => {
     upsert.run(record.call.id, JSON.stringify(record));
   };
@@ -26,6 +29,10 @@ export function sqliteStore(db: DatabaseSync): CallStore<DatabaseSync> {
       return row === undefined ? undefined : (JSON.parse(row.record) as CallRecord);
     },
     put: async (record) => put(record),
+    held: async (principal) =>
+      held
+        .all(principal ?? null)
+        .map((row) => JSON.parse((row as { record: string }).record) as CallRecord),
     byConnection: async (connection) =>
       byConnection
         .all(connection)

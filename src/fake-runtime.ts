@@ -28,6 +28,8 @@ type Conversation = {
 export function fakeRuntime(plan: Plan): AgentRuntime {
   const sources = new Map<ActionName, ActionSource>();
   const conversations = new Map<ConversationId, Conversation>();
+  // The conversation of every Call held here.
+  const heldIn = new Map<CallId, ConversationId>();
   // Held Calls, waiting for resume().
   const waiting = new Map<CallId, { to: ConversationId; resolve: (outcome: Outcome) => void }>();
 
@@ -74,6 +76,7 @@ export function fakeRuntime(plan: Plan): AgentRuntime {
           };
       c.view.messages.push({ from: "call", call: id, action: step.action, outcome });
       if (outcome.state === "held") {
+        heldIn.set(id, c.view.id);
         c.view.status = "waiting";
         show(c);
         outcome = await new Promise<Outcome>((resolve) =>
@@ -118,6 +121,7 @@ export function fakeRuntime(plan: Plan): AgentRuntime {
       waiting.delete(call);
       held.resolve(outcome);
     },
+    conversationOf: async (call) => heldIn.get(call),
     close: async () => {},
     stop: async (to) => {
       const c = open(to);

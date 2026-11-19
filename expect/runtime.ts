@@ -24,7 +24,8 @@ export type RuntimeFactory = (plan: Plan) => AgentRuntime;
 type Step =
   | { submit: { to: string; text: string; as?: string } }
   | { decide: { to: string; call: string; decision: Decision } }
-  | { stop: string };
+  | { stop: string }
+  | { conversation_of: string };
 
 export const scriptPlan: Plan = (input) =>
   input.text.split("\n").flatMap((line) => {
@@ -103,6 +104,9 @@ export async function runConformance(input: string, factory: RuntimeFactory): Pr
       await runtime.resume(call, outcome);
       await settle(to, call);
       lines.push(`${n} decide ${call} ${decision}, then resume`);
+    } else if ("conversation_of" in step) {
+      const found = await runtime.conversationOf(step.conversation_of);
+      lines.push(`${n} the conversation of ${step.conversation_of}: ${found ?? "none"}`);
     } else {
       watch(step.stop);
       await runtime.stop(step.stop);

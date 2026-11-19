@@ -35,13 +35,16 @@ type Details = Parameters<ToolExecutionApi["details"]>[0];
 const asJson = (details: CallDetails) => details as unknown as Details;
 
 type Conversations = { [kitId: string]: { pi: number; runs: number; stopped: boolean } };
-const KitConversations = defineDoc<{ conversations: Conversations }>({
-  kind: "kit.conversations",
-  version: 1,
-  scope: "session",
-  initial: () => ({ conversations: {} }),
-  checkpointWhen: () => false,
-});
+// `held` maps each Call held in a tool to its Kit conversation.
+const KitConversations = defineDoc<{ conversations: Conversations; held?: Record<string, string> }>(
+  {
+    kind: "kit.conversations",
+    version: 1,
+    scope: "session",
+    initial: () => ({ conversations: {} }),
+    checkpointWhen: () => false,
+  },
+);
 
 /**
  * An AgentRuntime on pi-durable. `start()` opens the Harness, with one
@@ -106,6 +109,11 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
             const outcomes: Outcome[] = [];
             let outcome = await awaitWithContext(source.run(call), ctx);
             while (outcome.state === "held") {
+              const kit = await kitIdOf(api.conversationId);
+              await open().commit(async (tx) => {
+                const doc = await tx.doc(KitConversations);
+                doc.held = { ...doc.held, [call.id]: kit };
+              }, context);
               outcomes.push(outcome);
               await api.details(asJson({ outcomes }), ctx);
               outcome = await awaitWithContext(decided(call), ctx);
@@ -145,6 +153,11 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
     })();
     ensuring.set(to, made);
     return made;
+  };
+
+  const kitIdOf = async (pi: ConversationId) => {
+    const all = (await open().snapshot(KitConversations, context))?.conversations ?? {};
+    return Object.keys(all).find((id) => all[id]?.pi === pi) ?? "";
   };
 
   const isStopped = async (to: string) =>
@@ -230,6 +243,9 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
         if (watcher.last) watcher.on({ ...watcher.last, status: "stopped" });
       }
     },
+
+    conversationOf: async (call) =>
+      (await open().snapshot(KitConversations, context))?.held?.[call],
 
     close: async () => {
       await harness?.close(context);

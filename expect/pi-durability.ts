@@ -25,6 +25,8 @@ type Step =
   | { decide: { to: string; call: string; decision: Decision; resume?: boolean } }
   | { crash_next_write: true } // the next notes write happens, then never finishes
   | { restart: true }
+  | { sweep: true } // the App's expiry sweep runs once
+  | { held: true } // the held Calls the App lists for p1
   | { wait_hours: number };
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
@@ -60,6 +62,7 @@ export async function runDurability(input: string): Promise<string> {
       version: "1",
       file: join(dir, "app.db"),
       now,
+      sweepEvery: 0,
       domains: [provide(notesDomain, (db: DatabaseSync) => ({ notes: scripted(sqliteNotes(db)) }))],
       runtime,
     });
@@ -108,6 +111,15 @@ export async function runDurability(input: string): Promise<string> {
       } else if ("crash_next_write" in step) {
         crash.next = true;
         lines.push(`${n} the next notes write will never finish`);
+      } else if ("sweep" in step) {
+        const expired = await app.sweepHolds();
+        for (const to of statuses.keys()) await settle(to);
+        lines.push(`${n} the expiry sweep runs: ${expired.length} expired`);
+      } else if ("held" in step) {
+        const held = await app.store.held("p1");
+        const where = await Promise.all(held.map((r) => runtime.conversationOf(r.call.id)));
+        const list = held.map((r, k) => `${r.call.id} ${r.call.action} in ${where[k] ?? "none"}`);
+        lines.push(`${n} held for p1: ${list.join("; ") || "none"}`);
       } else if ("restart" in step) {
         await app.close(); // an open write transaction is rolled back
         await open();

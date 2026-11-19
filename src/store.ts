@@ -25,6 +25,8 @@ export interface CallStore<Data = unknown> {
   put(record: CallRecord): Promise<void>;
   /** Every Call that came through a Connection, oldest first. */
   byConnection(connection: string): Promise<CallRecord[]>;
+  /** Every held Call, oldest first; only those acting as `principal` when given. */
+  held(principal?: string): Promise<CallRecord[]>;
   /** Runs `work` outside a transaction. Used for read Actions. */
   read<T>(work: (data: Data) => Promise<T>): Promise<T>;
   /**
@@ -54,6 +56,10 @@ export function memoryStore(): CallStore<Map<string, unknown>> {
       [...records.values()]
         .map((json) => JSON.parse(json) as CallRecord)
         .filter((record) => record.call.connection === connection),
+    held: async (principal) =>
+      [...records.values()]
+        .map((json) => JSON.parse(json) as CallRecord)
+        .filter((r) => r.state === "held" && (!principal || r.call.principal.id === principal)),
     read: (work) => work(data),
     transact: async (work) => {
       const draft = structuredClone(data);

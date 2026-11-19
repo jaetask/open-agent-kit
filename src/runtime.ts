@@ -43,6 +43,8 @@ export interface AgentRuntime {
   watch(to: ConversationId, on: (view: ConversationView) => void): Unwatch;
   resume(call: CallId, outcome: Outcome): Promise<void>;
   stop(to: ConversationId): Promise<void>;
+  /** The conversation a Call this Runtime held belongs to, kept durably by the Runtime. */
+  conversationOf(call: CallId): Promise<ConversationId | undefined>;
   /** Shuts the Runtime down. Conversations continue when it is started again on the same storage. */
   close(): Promise<void>;
 }

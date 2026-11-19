@@ -312,3 +312,9 @@ await app.listen(3120);
 ```
 
 `createApp` opens the App database, builds its CallStore, Connections and pipeline, installs each Plugin through `remoteSource`, starts the Runtime with a local source per Domain and a Plugin source per Plugin, and answers HTTP with `app.fetch`: `/mcp` serves its Domains. `app.close()` closes the Runtime, the Plugins, the HTTP server and the database, in that order. `@jaetask/open-agent-kit/app` runs on Node and imports `/mcp` and `/sqlite`; the Runtime is passed in, so the App does not import pi-durable unless the caller does.
+
+### Holds for people
+
+- `app.store.held(principal?)` lists held Calls, oldest first.
+- `runtime.conversationOf(call)` names the conversation a held Call belongs to. The Runtime records it when the Call is held and keeps it durably (pi-durable: in its session document); the pipeline and the Hold still know nothing of conversations.
+- `app.sweepHolds()` expires every Hold whose time has passed and gives each `expired` Outcome to the Runtime, so the conversation carries on. `createApp` runs it every minute (`sweepEvery`; 0 turns it off).

@@ -1,0 +1,22 @@
+{
+  "steps": [
+    {
+      "submit": {
+        "to": "t1",
+        "text": "call notes.add-note {\"text\":\"milk\"}\ncall notes.delete-note {\"id\":\"n1\"}\ncall notes.list-notes {}"
+      }
+    },
+    {
+      "held": true
+    },
+    {
+      "wait_hours": 25
+    },
+    {
+      "sweep": true
+    },
+    {
+      "held": true
+    }
+  ]
+}
