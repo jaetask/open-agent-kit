@@ -25,3 +25,46 @@ test("the setup secret is shown once, at first start, and stored only as a hash"
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("a setup secret the App made works once; one from configuration keeps working", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kit-app-test-"));
+  const said: string[] = [];
+  const base = {
+    name: "empty",
+    version: "1.0.0",
+    domains: [],
+    sweepEvery: 0,
+    log: (l: string) => said.push(l),
+  };
+  const signIn = async (url: string, secret: string) =>
+    (
+      await fetch(`${url}/api/session`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-kit-request": "1" },
+        body: JSON.stringify({ secret }),
+      })
+    ).status;
+  try {
+    const made = await createApp({ ...base, file: join(dir, "made.db") });
+    const url = await made.listen(0);
+    const secret = (said[0] as string).split(": ")[1] as string;
+    assert.equal(await signIn(url, secret), 200);
+    assert.equal(await signIn(url, secret), 401);
+    await made.close();
+    const again = await createApp({ ...base, file: join(dir, "made.db") });
+    await again.close();
+    assert.equal(said.length, 1); // no new secret after the first was used
+
+    const given = await createApp({
+      ...base,
+      file: join(dir, "given.db"),
+      setupSecret: "from-config",
+    });
+    const url2 = await given.listen(0);
+    assert.equal(await signIn(url2, "from-config"), 200);
+    assert.equal(await signIn(url2, "from-config"), 200);
+    await given.close();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

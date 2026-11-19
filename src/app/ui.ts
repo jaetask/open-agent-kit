@@ -7,7 +7,7 @@ import type { Calls } from "../calls.js";
 import type { Decision } from "../outcome.js";
 import type { AgentRuntime } from "../runtime.js";
 import type { CallStore } from "../store.js";
-import type { Sessions } from "./session.js";
+import { SESSION_DAYS, type Sessions } from "./session.js";
 
 const COOKIE = "kit_session";
 
@@ -106,7 +106,8 @@ export function uiRoutes(options: UiOptions) {
           const token = secret ? sessions.start(secret) : null;
           if (!token) return json({ error: "That is not the setup secret." }, 401);
           const secure = new URL(request.url).protocol === "https:" ? "; Secure" : "";
-          const cookie = `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=2592000${secure}`;
+          const age = SESSION_DAYS * 24 * 60 * 60;
+          const cookie = `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}${secure}`;
           return json({ signedIn: true }, 200, { "set-cookie": cookie });
         }
         if (request.method === "DELETE") {
@@ -117,6 +118,10 @@ export function uiRoutes(options: UiOptions) {
       }
       const principal = await principalOf(request);
       if (!principal) return json({ error: "Sign in first." }, 401);
+      if (pathname === "/api/sessions" && request.method === "DELETE") {
+        sessions.endAll();
+        return json({ signedIn: false }, 200, { "set-cookie": `${COOKIE}=; Path=/; Max-Age=0` });
+      }
       return routes(request, principal);
     },
   };

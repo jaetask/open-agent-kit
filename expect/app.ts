@@ -33,14 +33,16 @@ type Step =
   | { host: { id: string; action: string; input: unknown } } // over MCP, as a paired Host
   | { chat: { to: string; text: string } }
   | { decide: { to: string; call: string; decision: Decision } }
-  | { restart: true };
+  | { restart: true }
+  | { wait_days: number };
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
 
 export async function runApp(input: string): Promise<string> {
   const { steps } = JSON.parse(input) as { steps: Step[] };
   const dir = mkdtempSync(join(tmpdir(), "kit-app-"));
-  const now = () => Date.parse("2026-01-01T00:00:00Z");
+  let clock = Date.parse("2026-01-01T00:00:00Z");
+  const now = () => clock;
   let app!: App;
   let url = "";
   const views = new Map<string, ConversationView>();
@@ -211,6 +213,9 @@ export async function runApp(input: string): Promise<string> {
         });
         const outcome = (await response.json()) as { state: string };
         lines.push(`${n} the page decides ${call} ${decision} → ${outcome.state}`);
+      } else if ("wait_days" in step) {
+        clock += step.wait_days * 24 * 60 * 60 * 1000;
+        lines.push(`${n} ${step.wait_days} days pass`);
       } else {
         stopEvents();
         await host?.close();

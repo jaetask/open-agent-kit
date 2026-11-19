@@ -1,0 +1,67 @@
+{
+  "steps": [
+    {
+      "sign_in": "expect-setup-secret"
+    },
+    {
+      "raw": {
+        "method": "GET",
+        "path": "/api/session",
+        "session": true
+      }
+    },
+    {
+      "wait_days": 29
+    },
+    {
+      "raw": {
+        "method": "GET",
+        "path": "/api/session",
+        "session": true
+      }
+    },
+    {
+      "wait_days": 2
+    },
+    {
+      "raw": {
+        "method": "GET",
+        "path": "/api/session",
+        "session": true
+      }
+    },
+    {
+      "raw": {
+        "method": "POST",
+        "path": "/api/calls",
+        "body": {
+          "id": "u1",
+          "action": "notes.add-note",
+          "input": {
+            "text": "milk"
+          }
+        },
+        "session": true,
+        "header": true
+      }
+    },
+    {
+      "sign_in": "expect-setup-secret"
+    },
+    {
+      "raw": {
+        "method": "DELETE",
+        "path": "/api/sessions",
+        "session": true,
+        "header": true
+      }
+    },
+    {
+      "raw": {
+        "method": "GET",
+        "path": "/api/session",
+        "session": true
+      }
+    }
+  ]
+}

@@ -78,7 +78,7 @@ export async function createApp(options: AppOptions): Promise<App> {
   const remotes = await Promise.all((options.plugins ?? []).map((p) => remoteSource(p)));
   const plugins: Plugin[] = [];
   for (const source of remotes) plugins.push({ contract: await source.contract(), source });
-  const sessions = sqliteSessions(db, options.owner ?? { id: "owner" });
+  const sessions = sqliteSessions(db, options.owner ?? { id: "owner" }, options.now);
   const made = sessions.setup(options.setupSecret);
   if (made) (options.log ?? console.log)(`Setup secret (shown once): ${made}`);
   const listeners = new Set<(event: ChangeEvent) => void>();
