@@ -1,0 +1,1 @@
+{ "steps": [{ "invoke": { "id": "c1", "action": "notes.rename-note" } }] }

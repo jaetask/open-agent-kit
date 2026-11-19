@@ -1,6 +1,6 @@
 # AGENTS.md
 
-A TypeScript library, Node 22+, ESM, built with tsc. Design stage: read [README.md](README.md) and [docs/index.html](docs/index.html) first.
+A TypeScript library, Node 22.13+, ESM, built with tsc. Design stage: read [README.md](README.md) and [docs/index.html](docs/index.html) first.
 
 - **Language**: use the words in [GLOSSARY.md](GLOSSARY.md), never their _Avoid_ synonyms.
 - **One layer at a time**, in the README's order. A layer is done when its proof is committed and green. Add nothing from a later layer.

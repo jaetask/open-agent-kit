@@ -1,4 +1,5 @@
 import type { AnyAction } from "./action.js";
+import type { Principal } from "./call.js";
 import type { Card } from "./card.js";
 import { checkName, checkSemver, checkText, checkUnique, fail } from "./names.js";
 
@@ -9,6 +10,8 @@ export type Domain = {
   readonly about: string;
   readonly actions: readonly AnyAction[];
   readonly cards: readonly Card[];
+  /** May this Principal run this Action? Asked on every Call, whatever the Caller. */
+  authorise(principal: Principal, action: AnyAction): boolean;
 };
 
 export function defineDomain(domain: {
@@ -17,6 +20,8 @@ export function defineDomain(domain: {
   about: string;
   actions: readonly AnyAction[];
   cards?: readonly Card[];
+  /** Defaults to allowing every Principal. */
+  authorise?: (principal: Principal, action: AnyAction) => boolean;
 }): Domain {
   checkName("Domain", domain.name);
   const where = `Domain ${domain.name}`;
@@ -45,5 +50,6 @@ export function defineDomain(domain: {
     about: domain.about,
     actions: Object.freeze([...domain.actions]),
     cards: Object.freeze([...cards]),
+    authorise: domain.authorise ?? (() => true),
   });
 }

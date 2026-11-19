@@ -1,0 +1,8 @@
+{
+  "steps": [
+    { "hang": { "id": "c1", "action": "notes.add-note", "input": { "text": "milk" } } },
+    { "restart": true },
+    { "invoke": { "id": "c1", "action": "notes.add-note", "input": { "text": "milk" } } },
+    { "invoke": { "id": "c1", "action": "notes.add-note", "input": { "text": "milk" } } }
+  ]
+}

@@ -1,6 +1,6 @@
 // Renders the Kit's public values as Markdown for expect files.
 import { table } from "@jaetask/snap";
-import type { Contract } from "../src/index.js";
+import type { Contract, MachineDefinition } from "../src/index.js";
 
 const json = (value: unknown) => `\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
 
@@ -38,4 +38,15 @@ export function renderContract(c: Contract): string {
       json(a.output),
     ]),
   ].join("\n\n");
+}
+
+export function renderMachine<S extends string, E extends string>(m: MachineDefinition<S, E>) {
+  const states = Object.keys(m.states) as S[];
+  const rows = states.flatMap((state) => {
+    const moves = Object.entries(m.states[state]) as [E, S][];
+    return moves.length ? moves.map(([event, to]) => [state, event, to]) : [[state, "", "(final)"]];
+  });
+  return [`Initial state: ${m.initial}`, table(["state", "event", "next state"], rows)].join(
+    "\n\n",
+  );
 }

@@ -9,8 +9,11 @@ export type Reason = { code: string; message: string };
 /** One thing a succeeded Call changed, so a UI can fetch it again. */
 export type Change = { kind: "created" | "updated" | "deleted"; subject: string; id: string };
 
-/** A Call waiting for a Decision. */
-export type Hold = { id: CallId; action: ActionName };
+/** A Call waiting for a Decision. A Decision after `expiresAt` is refused. */
+export type Hold = { id: CallId; action: ActionName; input: unknown; expiresAt: string };
+
+/** A person's yes or no on a Hold, or its expiry. */
+export type Decision = "yes" | "no" | "expired";
 
 /** A Card filled with data: how one Outcome is shown. */
 export type CardView = { card: string; version: number; data: Json };

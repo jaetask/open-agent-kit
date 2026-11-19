@@ -8,8 +8,11 @@
 
 | export |
 | --- |
+| CALL_MACHINE |
 | EFFECTS |
 | contract |
+| createCalls |
 | defineAction |
 | defineCard |
 | defineDomain |
+| memoryStore |

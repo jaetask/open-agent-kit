@@ -2,9 +2,10 @@
 // output sits beside it as name.expect.md. Run `npm run expect -- --update`
 // to write new output, then read it before committing.
 import { snap } from "@jaetask/snap";
-import { contract, type Domain } from "../src/index.js";
+import { CALL_MACHINE, contract, type Domain } from "../src/index.js";
+import { renderScript } from "./calls.js";
 import { buildDomain } from "./definitions.js";
-import { renderContract, renderExports } from "./render.js";
+import { renderContract, renderExports, renderMachine } from "./render.js";
 
 const load = async (module: string): Promise<Record<string, unknown>> =>
   import(new URL(`../${module}`, import.meta.url).href);
@@ -27,6 +28,16 @@ const failed = await snap([
     // Input: a Domain as plain JSON. Output: its Contract, or the definition error.
     dir: "expect/definitions",
     render: (input) => renderContract(contract(buildDomain(JSON.parse(input)))),
+  },
+  {
+    // Input: { "machine": "call" }. Output: its transition table.
+    dir: "expect/machine",
+    render: () => renderMachine(CALL_MACHINE),
+  },
+  {
+    // Input: a Call script. Output: each step's Outcome, the transitions, the notes.
+    dir: "expect/calls",
+    render: renderScript,
   },
 ]);
 process.exit(failed === 0 ? 0 : 1);

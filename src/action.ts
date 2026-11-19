@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Principal } from "./call.js";
 import type { Card } from "./card.js";
+import type { Change } from "./outcome.js";
 import { checkName, checkText, fail } from "./names.js";
 
 /** What an Action does to the world. Declared once; everything else follows from it. */
@@ -8,8 +9,11 @@ export type Effect = "read" | "write" | "danger";
 
 export const EFFECTS: readonly Effect[] = ["read", "write", "danger"];
 
-/** What run() receives besides its input: the Principal, plus its Domain's dependencies. */
-export type RunContext<Deps> = { principal: Principal } & Deps;
+/**
+ * What run() receives besides its input: the Principal, `change` to list what
+ * a write or danger Action changed, and its Domain's dependencies.
+ */
+export type RunContext<Deps> = { principal: Principal; change(change: Change): void } & Deps;
 
 /**
  * One named operation of a Domain. run() takes its input and dependencies and

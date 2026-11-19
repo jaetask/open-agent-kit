@@ -24,7 +24,11 @@ export const addNote = defineAction({
   input: z.object({ text: z.string().min(1) }),
   output: Note,
   card: noteCard,
-  run: ({ text }, { principal, notes }: RunContext<NotesDeps>) => notes.add(principal.id, text),
+  run: ({ text }, { principal, notes, change }: RunContext<NotesDeps>) => {
+    const note = notes.add(principal.id, text);
+    change({ kind: "created", subject: "note", id: note.id });
+    return note;
+  },
 });
 
 export const deleteNote = defineAction({
@@ -33,9 +37,11 @@ export const deleteNote = defineAction({
   effect: "danger",
   input: z.object({ id: z.string() }),
   output: z.object({ deleted: z.boolean() }),
-  run: ({ id }, { principal, notes }: RunContext<NotesDeps>) => ({
-    deleted: notes.remove(principal.id, id),
-  }),
+  run: ({ id }, { principal, notes, change }: RunContext<NotesDeps>) => {
+    const deleted = notes.remove(principal.id, id);
+    if (deleted) change({ kind: "deleted", subject: "note", id });
+    return { deleted };
+  },
 });
 
 export const notesDomain = defineDomain({
@@ -44,4 +50,6 @@ export const notesDomain = defineDomain({
   about: "Short notes, one list per Principal.",
   actions: [listNotes, addNote, deleteNote],
   cards: [noteList, noteCard],
+  // A guest may read; only signed-in Principals may change notes.
+  authorise: (principal, action) => principal.id !== "guest" || action.effect === "read",
 });

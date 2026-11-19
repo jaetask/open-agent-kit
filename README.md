@@ -56,7 +56,7 @@ npm run expect
 npm run build
 ```
 
-Node 22 or later. `npm install` also turns on the git hooks in `.agents/guardrails/hooks`.
+Node 22.13 or later. `npm install` also turns on the git hooks in `.agents/guardrails/hooks`.
 
 ## Inspiration
 

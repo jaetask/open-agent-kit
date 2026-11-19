@@ -1,0 +1,7 @@
+{
+  "steps": [
+    { "invoke": { "id": "c1", "action": "notes.add-note", "input": { "text": "milk" } } },
+    { "invoke": { "id": "c2", "action": "notes.delete-note", "input": { "id": "n1" } } },
+    { "decide": { "id": "c2", "decision": "yes" } }
+  ]
+}

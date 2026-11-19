@@ -1,0 +1,13 @@
+{
+  "steps": [
+    {
+      "invoke": {
+        "id": "c1",
+        "action": "notes.add-note",
+        "input": { "text": "milk" },
+        "principal": { "id": "guest" }
+      }
+    },
+    { "invoke": { "id": "c2", "action": "notes.list-notes", "principal": { "id": "guest" } } }
+  ]
+}
