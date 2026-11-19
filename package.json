@@ -1,0 +1,59 @@
+{
+  "name": "@jaetask/open-agent-kit",
+  "version": "0.0.0",
+  "description": "A small kit for standalone apps that each carry their own agent and join together over MCP.",
+  "keywords": [
+    "agent",
+    "mcp",
+    "actions",
+    "pi-durable",
+    "ddd"
+  ],
+  "author": "jaetask",
+  "license": "MIT",
+  "homepage": "https://github.com/jaetask/open-agent-kit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaetask/open-agent-kit.git"
+  },
+  "bugs": "https://github.com/jaetask/open-agent-kit/issues",
+  "files": [
+    "dist",
+    "README.md",
+    "GLOSSARY.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts",
+    "expect": "tsx expect/snap.ts",
+    "lint": "biome lint . && npm run check:docs",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "prepare": "git config core.hooksPath .agents/guardrails/hooks || true",
+    "check:docs": "node scripts/check-docs.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.5",
+    "@jaetask/snap": "0.1.0",
+    "@types/node": "22.18.0",
+    "tsx": "4.20.5",
+    "typescript": "5.9.2"
+  }
+}

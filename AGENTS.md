@@ -1,0 +1,12 @@
+# AGENTS.md
+
+A TypeScript library, Node 22+, ESM, built with tsc. Design stage: read [README.md](README.md) and [docs/index.html](docs/index.html) first.
+
+- **Language**: use the words in [GLOSSARY.md](GLOSSARY.md), never their _Avoid_ synonyms.
+- **One layer at a time**, in the README's order. A layer is done when its proof is committed and green. Add nothing from a later layer.
+- **Proofs** are expect tests in `expect/`: `npm run expect -- --update`, then read every new `.expect.md` before committing.
+- **Packaging**: one npm package, `@jaetask/open-agent-kit`. The core is the root entry point; adapters are subpath exports (`/pi`, `/mcp`, `/react`) with optional peer dependencies. pi-durable may only be imported under the `/pi` entry point.
+- **Checks**: `npm run typecheck`, `lint`, `format:check`, `test`, `expect`, `build`. Hooks in `.agents/guardrails/hooks` run them on commit and push; `npm run format` fixes formatting.
+- **Public docs state decisions only**: open questions and undecided items never go in `docs/` or README.md; they belong in issues or the conversation. `npm run check:docs` (part of `lint`) enforces it.
+- Log friction and decisions with the trail skill.
+- When corrected, or when the same friction repeats, use the pave skill.
