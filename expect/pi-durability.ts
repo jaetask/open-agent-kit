@@ -58,6 +58,7 @@ export async function runDurability(input: string): Promise<string> {
     const storage = await openNodeSqliteStorage(join(dir, "pi.db"), { prefix: "pi_" });
     runtime = piRuntime({ storage, now, ...scriptedModels(scriptPlan) });
     app = await createApp({
+      log: () => {},
       name: "notes",
       version: "1",
       file: join(dir, "app.db"),

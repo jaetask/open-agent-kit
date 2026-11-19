@@ -1,0 +1,59 @@
+{
+  "steps": [
+    {
+      "sign_in": "expect-setup-secret"
+    },
+    {
+      "ui": {
+        "id": "u1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "chat": {
+        "to": "t1",
+        "text": "call notes.add-note {\"text\":\"bread\"}\ncall notes.delete-note {\"id\":\"n1\"}\ncall notes.list-notes {}"
+      }
+    },
+    {
+      "holds": true
+    },
+    {
+      "restart": true
+    },
+    {
+      "holds": true
+    },
+    {
+      "decide": {
+        "to": "t1",
+        "call": "t1-r1-c2",
+        "decision": "yes"
+      }
+    },
+    {
+      "ui": {
+        "id": "u1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "holds": true
+    },
+    {
+      "record": "u1"
+    },
+    {
+      "record": "t1-r1-c1"
+    },
+    {
+      "record": "t1-r1-c2"
+    }
+  ]
+}

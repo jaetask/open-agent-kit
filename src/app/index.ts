@@ -145,7 +145,10 @@ export async function createApp(options: AppOptions): Promise<App> {
     const body = new ReadableStream<Uint8Array>({
       start(controller) {
         const encoder = new TextEncoder();
-        const send = (text: string) => controller.enqueue(encoder.encode(text));
+        let open = true;
+        const send = (text: string) => {
+          if (open) controller.enqueue(encoder.encode(text));
+        };
         const listener = (event: ChangeEvent) => {
           const { call, changes } = event;
           const data = { call: call.id, action: call.action, caller: call.caller, changes };
@@ -153,12 +156,13 @@ export async function createApp(options: AppOptions): Promise<App> {
         };
         const ping = setInterval(() => send(": ping\n\n"), 15_000);
         listeners.add(listener);
-        streams.add(controller);
         stop = () => {
+          open = false;
           clearInterval(ping);
           listeners.delete(listener);
-          streams.delete(controller);
+          streams.delete(stop);
         };
+        streams.add(stop);
         send(": connected\n\n");
       },
       cancel: () => stop(),
@@ -167,7 +171,8 @@ export async function createApp(options: AppOptions): Promise<App> {
       headers: { "content-type": "text/event-stream", "cache-control": "no-store" },
     });
   };
-  const streams = new Set<ReadableStreamDefaultController<Uint8Array>>();
+  // How to end each open event stream, for close().
+  const streams = new Set<() => void>();
 
   const ui = uiRoutes({ calls, store, sessions, runtime: options.runtime, connections, host });
   const owner = options.owner ?? { id: "owner" };
@@ -273,8 +278,7 @@ export async function createApp(options: AppOptions): Promise<App> {
     close: async () => {
       clearInterval(sweeper);
       clearInterval(syncer);
-      for (const stream of streams) stream.close();
-      streams.clear();
+      for (const stop of [...streams]) stop();
       await options.runtime?.close();
       for (const source of remotes) await source.close();
       await host.close();

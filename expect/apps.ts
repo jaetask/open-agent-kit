@@ -45,6 +45,7 @@ export async function runApps(input: string): Promise<string> {
 
   // tasks: owns the notes, serves them over MCP.
   const tasksApp = await createApp({
+    log: () => {},
     name: "tasks",
     version: "1",
     file: ":memory:",
@@ -67,6 +68,7 @@ export async function runApps(input: string): Promise<string> {
   // talk: installs the Plugin; its agent uses it through talk's pipeline.
   const runtime = piRuntime({ storage: new MemoryStorage(), now, ...scriptedModels(scriptPlan) });
   const talkApp = await createApp({
+    log: () => {},
     name: "talk",
     version: "1",
     file: ":memory:",

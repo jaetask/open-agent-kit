@@ -373,6 +373,10 @@ The page is plain HTML, CSS and one script, with no framework, build step or CDN
 
 When a run ends without an answer, the pi adapter adds an agent message saying why (for example a model error), so the person is not left waiting; a run the person stopped says nothing.
 
+### End to end
+
+`expect/app/end-to-end` drives the notes App over real HTTP with the scripted model: a note added from the page, a note added and one deleted through the chat, the delete held, the App restarted while it waits, the Hold listed again and approved from the page, and the page's add retried with the same Call id. It ends with exactly one note, one change event per change, and one record per Call.
+
 ### Packaging
 
 `examples/notes/Dockerfile` builds the example as one container (Node 22.22, running as the `node` user) with one data volume at `/data` and a healthcheck on `/health`. `examples/notes/compose.yaml` runs one App on port 3120; `examples/notes/compose.pair.yaml` runs `tasks` on 3120 and `talk` on 3121 with `KIT_CONNECT=http://tasks:3120/mcp`. A Host keeps asking the other App to pair until it answers, so the order the containers start in does not matter.

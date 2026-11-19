@@ -44,6 +44,7 @@ export async function runMcp(input: string): Promise<string> {
     steps: Step[];
   };
   const app = await createApp({
+    log: () => {},
     name: "notes",
     version: "1",
     file: ":memory:",
