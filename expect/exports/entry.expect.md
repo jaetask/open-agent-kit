@@ -16,3 +16,4 @@
 | defineCard |
 | defineDomain |
 | memoryStore |
+| provide |

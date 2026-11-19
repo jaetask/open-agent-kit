@@ -436,10 +436,10 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
     </div>
     <figure class="fig">
       <div class="fig-scroll">
-      <svg viewBox="0 0 960 250" style="min-width:720px" role="img" aria-label="One Effect field per Action decides seven behaviours. Read: runs in parallel, safe to rerun after a crash, no gate, no audit, no change event. Write: sequential, deduped by Call id, audited, publishes a change. Danger: all of write, plus the Gate holds the Call for a human Decision.">
+      <svg viewBox="0 0 960 250" style="min-width:720px" role="img" aria-label="One Effect field per Action decides seven behaviours. Read: runs in parallel, deduped by Call id, no gate, no audit, no change event. Write: sequential, deduped by Call id, audited, publishes a change. Danger: all of write, plus the Gate holds the Call for a human Decision.">
         <text x="20" y="24" class="ts">EFFECT</text><text x="200" y="24" class="ts">RUNS</text><text x="330" y="24" class="ts">AFTER A CRASH</text><text x="520" y="24" class="ts">GATE</text><text x="670" y="24" class="ts">AUDIT</text><text x="790" y="24" class="ts">CHANGE EVENT</text>
         <rect x="20" y="36" width="140" height="52" rx="8" class="s-ok"/><text x="90" y="60" text-anchor="middle" class="th c-ok">read</text><text x="90" y="77" text-anchor="middle" class="ts">list-tasks</text>
-        <text x="200" y="67" class="t">in parallel</text><text x="330" y="67" class="t">runs again</text><text x="520" y="67" class="t">passes</text><text x="670" y="67" class="t">no</text><text x="790" y="67" class="t">no</text>
+        <text x="200" y="67" class="t">in parallel</text><text x="330" y="67" class="t">deduped by Call id</text><text x="520" y="67" class="t">passes</text><text x="670" y="67" class="t">no</text><text x="790" y="67" class="t">no</text>
         <line x1="20" y1="100" x2="940" y2="100" class="ln-mut"/>
         <rect x="20" y="112" width="140" height="52" rx="8" class="s-pi"/><text x="90" y="136" text-anchor="middle" class="th c-pi">write</text><text x="90" y="153" text-anchor="middle" class="ts">create-task</text>
         <text x="200" y="143" class="t">one at a time</text><text x="330" y="143" class="t">deduped by Call id</text><text x="520" y="143" class="t">passes</text><text x="670" y="143" class="t">yes</text><text x="790" y="143" class="t">yes</text>
@@ -548,8 +548,9 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
            | <span class="k">"failed"</span> | <span class="k">"interrupted"</span>;
       reason: Reason };                      <span class="c">// errors are values</span>
 <span class="c">// Same Call id invoked twice returns the stored Outcome.
-// That one rule gives exactly-once writes across crashes
-// and across apps.</span></pre>
+// The Outcome commits in the same transaction as the
+// Domain's change, so a write to the App's database
+// happens once, even across a crash.</span></pre>
     </div>
   </div>
 </section>
@@ -761,7 +762,7 @@ const MACHINE = {
   gating:{on:{PASS:"running",HOLD:"held"}, say:"read and write pass. danger holds. An App can add its own Gate rules, such as holding writes while a switch is off."},
   held:{on:{YES:"running",NO:"declined",EXPIRE:"expired"}, say:"The Call is stored and waits for a Decision. No process is held; a restart changes nothing."},
   running:{on:{DONE:"succeeded",THROW:"failed",CRASH:"interrupted"}, say:"The Action's run() executes with its Domain's dependencies."},
-  interrupted:{on:{RESUME:"running"}, say:"The process died mid-run. On reopen the Call runs again; for a write, the Call id dedupe returns the stored Outcome if it had already finished."},
+  interrupted:{on:{RESUME:"running"}, say:"The process stopped mid-run. A write's change and its Outcome commit together, so neither was kept, and the next invoke runs the Call again."},
   succeeded:{on:{}, say:"Outcome stored under the Call id, with its Card and Changes. Any retry returns this same Outcome."},
   rejected:{on:{}, say:"Invalid input or not allowed. The Reason is a value the Caller can show."},
   declined:{on:{}, say:"The person said no. The agent is told nothing was changed."},
@@ -791,7 +792,7 @@ const P = [
   "They track different things. The Call machine is the domain truth and works with no agent at all (a button click is a Call). pi-durable is only how the agent's wait survives a restart. The adapter translates one way: Outcome in, park or result out. The Call store is authoritative; if they ever disagree, the Call id lookup wins."],
  ["“Exactly-once across a network is impossible.”",
   "A host can crash after the remote app ran the write but before it heard back.",
-  "Correct, so we don't claim it. We claim at-least-once delivery plus idempotent execution: the host retries with the same Call id and the owning app returns the stored Outcome. The dedupe record is written in the same SQLite transaction as the Domain's change. Cost: Actions whose effects leave the app (sending email) need the same key passed to the provider."],
+  "Correct, so we don't claim it. We claim at-least-once delivery plus idempotent execution: the host retries with the same Call id and the owning app returns the stored Outcome. The Outcome is stored in the same transaction as the Domain's change, so a write to data in the owning app's database happens exactly once. Effects outside that database (an email, an HTTP call, another app) are at-least-once: <code>run()</code> receives the Call id to pass on as the idempotency key. Cost: such an effect needs a provider that accepts one."],
  ["“Any app on the tailnet can tell Tasks it's me.”",
   "Cross-app identity is where designs like this usually hand-wave.",
   "A host never asserts identity. It presents a Connection token that Tasks itself minted when the person paired, scoped to that Principal and to chosen Effects. Tasks' pipeline authenticates and authorises every Call again. Revoking the Connection in Tasks cuts the host off at once. Cost: pairing is a manual step per pair of apps."],

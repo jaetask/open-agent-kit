@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Principal } from "./call.js";
+import type { CallId, Principal } from "./call.js";
 import type { Card } from "./card.js";
 import type { Change } from "./outcome.js";
 import { checkName, checkText, fail } from "./names.js";
@@ -10,10 +10,16 @@ export type Effect = "read" | "write" | "danger";
 export const EFFECTS: readonly Effect[] = ["read", "write", "danger"];
 
 /**
- * What run() receives besides its input: the Principal, `change` to list what
- * a write or danger Action changed, and its Domain's dependencies.
+ * What run() receives besides its input: the Principal; the Call id, to pass
+ * on as the idempotency key for any effect outside the App's database;
+ * `change` to list what a write or danger Action changed; and its Domain's
+ * dependencies.
  */
-export type RunContext<Deps> = { principal: Principal; change(change: Change): void } & Deps;
+export type RunContext<Deps> = {
+  principal: Principal;
+  callId: CallId;
+  change(change: Change): void;
+} & Deps;
 
 /**
  * One named operation of a Domain. run() takes its input and dependencies and
@@ -32,8 +38,8 @@ export type Action<Input extends z.ZodType, Output extends z.ZodType, Deps = obj
   ): z.output<Output> | Promise<z.output<Output>>;
 };
 
-/** Any Action, whatever its schemas and dependencies. */
-export type AnyAction = Action<z.ZodType, z.ZodType, object>;
+/** Any Action needing `Deps`, whatever its schemas. */
+export type AnyAction<Deps = object> = Action<z.ZodType, z.ZodType, Deps>;
 
 export function defineAction<Input extends z.ZodType, Output extends z.ZodType, Deps = object>(
   action: Action<Input, Output, Deps>,

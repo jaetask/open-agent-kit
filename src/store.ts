@@ -13,23 +13,46 @@ export type CallRecord = {
 };
 
 /**
- * Where Calls are kept, by Call id. It is what makes a repeated Call id
- * return the stored Outcome, and a Hold survive a restart.
+ * Where Calls are kept, by Call id, next to the App's own data. `Data` is the
+ * handle Domains reach their data through: a database connection, or a Map
+ * in memory.
+ *
+ * `transact` is what makes a write happen once: the Domain's change and the
+ * Call's Outcome commit together, or neither does.
  */
-export interface CallStore {
+export interface CallStore<Data = unknown> {
   get(id: CallId): Promise<CallRecord | undefined>;
   put(record: CallRecord): Promise<void>;
+  /** Runs `work` outside a transaction. Used for read Actions. */
+  read<T>(work: (data: Data) => Promise<T>): Promise<T>;
+  /**
+   * Runs `work` in one transaction and stores the record it returns in that
+   * same transaction. If `work` throws, nothing it changed is kept.
+   */
+  transact(work: (data: Data) => Promise<CallRecord>): Promise<void>;
 }
 
-/** A CallStore in memory. It forgets everything when the process ends. */
-export function memoryStore(): CallStore {
+/**
+ * A CallStore in memory, with the App's data in a Map. A transaction works on
+ * a copy of the Map and replaces it on commit. Everything is lost when the
+ * process ends.
+ */
+export function memoryStore(): CallStore<Map<string, unknown>> {
   const records = new Map<CallId, string>();
+  let data = new Map<string, unknown>();
   return {
     get: async (id) => {
       const json = records.get(id);
       return json === undefined ? undefined : (JSON.parse(json) as CallRecord);
     },
     put: async (record) => {
+      records.set(record.call.id, JSON.stringify(record));
+    },
+    read: (work) => work(data),
+    transact: async (work) => {
+      const draft = structuredClone(data);
+      const record = await work(draft);
+      data = draft;
       records.set(record.call.id, JSON.stringify(record));
     },
   };

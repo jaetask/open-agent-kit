@@ -3,26 +3,29 @@ import type { Principal } from "./call.js";
 import type { Card } from "./card.js";
 import { checkName, checkSemver, checkText, checkUnique, fail } from "./names.js";
 
-/** A bounded part of an App. Nothing outside reaches its data except through its Actions. */
-export type Domain = {
+/**
+ * A bounded part of an App. Nothing outside reaches its data except through
+ * its Actions. `Deps` is what its Actions' run() needs besides its input.
+ */
+export type Domain<Deps = object> = {
   readonly name: string;
   readonly version: string;
   readonly about: string;
-  readonly actions: readonly AnyAction[];
+  readonly actions: readonly AnyAction<Deps>[];
   readonly cards: readonly Card[];
   /** May this Principal run this Action? Asked on every Call, whatever the Caller. */
-  authorise(principal: Principal, action: AnyAction): boolean;
+  authorise(principal: Principal, action: AnyAction<Deps>): boolean;
 };
 
-export function defineDomain(domain: {
+export function defineDomain<Deps = object>(domain: {
   name: string;
   version: string;
   about: string;
-  actions: readonly AnyAction[];
+  actions: readonly AnyAction<Deps>[];
   cards?: readonly Card[];
   /** Defaults to allowing every Principal. */
-  authorise?: (principal: Principal, action: AnyAction) => boolean;
-}): Domain {
+  authorise?: (principal: Principal, action: AnyAction<Deps>) => boolean;
+}): Domain<Deps> {
   checkName("Domain", domain.name);
   const where = `Domain ${domain.name}`;
   checkSemver(where, domain.version);

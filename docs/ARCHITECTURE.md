@@ -31,7 +31,7 @@ const notesDomain = defineDomain({
 ```
 
 - `defineAction` takes seven fields: `name`, `description`, `effect`, `input`, `output`, an optional `card` and `run`. Input and output are zod schemas.
-- `run(input, context)` receives the parsed input and a `RunContext<Deps>`: the Principal plus the Domain's dependencies. Annotate the context to declare which dependencies an Action needs. It returns a value or a promise of one.
+- `run(input, context)` receives the parsed input and a `RunContext<Deps>`: the Principal, the Call id (`callId`), `change()` and the Domain's dependencies. Annotate the context to declare which dependencies an Action needs. It returns a value or a promise of one.
 - `defineCard` takes a `name`, a whole-number `version` from 1 and an `about` line.
 - `defineDomain` takes a `name`, a semver `version`, an `about` line, its Actions and its Cards.
 - Names are kebab-case. Each define function checks its input, throws an `Error` that names the definition and the problem, and returns a frozen value. The checks are listed in `expect/definitions`.
@@ -65,13 +65,16 @@ interface Calls {
   decide(id: CallId, decision: Decision): Promise<Outcome>;
 }
 
+const db = new DatabaseSync("app.db");
 const calls = createCalls({
-  domains: [{ domain: notesDomain, deps: { notes } }],
-  store: memoryStore(), // or sqliteStore(path) from @jaetask/open-agent-kit/sqlite
+  store: sqliteStore(db), // from @jaetask/open-agent-kit/sqlite
+  domains: [provide(notesDomain, (db: DatabaseSync) => ({ notes: sqliteNotes(db) }))],
 });
 ```
 
 `createCalls` also takes `holdFor` (how long a Hold waits, in milliseconds; one day by default) and `now` (the clock; `Date.now` by default).
+
+`provide(domain, deps)` pairs a Domain with a function that builds its dependencies from the store's data handle. The compiler checks that `deps` returns what the Domain's Actions declare in their `RunContext`.
 
 ### The Call machine
 
@@ -89,18 +92,21 @@ The machine is a small table in `src/machine.ts`. machina's `MachineDefinition` 
 
 | Effect | Runs | Gate | Changes |
 | --- | --- | --- | --- |
-| `read` | in parallel | passes | none; `change()` fails the Call |
-| `write` | one at a time | passes | listed in the Outcome |
-| `danger` | one at a time | holds for a Decision | listed in the Outcome |
+| `read` | in parallel with other reads | passes | none; `change()` fails the Call |
+| `write` | one at a time, after running reads finish | passes | listed in the Outcome |
+| `danger` | one at a time, after running reads finish | holds for a Decision | listed in the Outcome |
 
-`run()` lists what it changed with `context.change({ kind, subject, id })`. A succeeded Outcome carries the Changes, and, when the Action names a Card, a `CardView` whose data is the output.
+Every Call, whatever its Effect, is stored by Call id. `run()` lists what it changed with `context.change({ kind, subject, id })`. A succeeded Outcome carries the Changes, and, when the Action names a Card, a `CardView` whose data is the output.
 
-### Call ids and the store
+### The store and the once guarantee
 
-- Each Call is kept in a `CallStore` under its id, as a `CallRecord`: the Call, its state, its transitions and, once held or ended, its Outcome.
-- Invoking an id that has ended returns the stored Outcome without running anything. Two invokes of the same id at once share one run.
-- A Hold is stored, so it survives a restart.
-- A Call is stored as `running` before `run()` starts. If the process stops there, the next invoke of that id moves it through `interrupted` and runs it again.
+A `CallStore<Data>` keeps each Call as a `CallRecord` (the Call, its state, its transitions and, once held or ended, its Outcome) next to the App's own data. `Data` is the handle Domains use: the `DatabaseSync` connection for `sqliteStore`, or a `Map` for `memoryStore`.
+
+- A write or danger Action runs inside `store.transact`: its Domain's change and its Outcome commit together, or neither does. If `run()` throws, the change is rolled back and the Call is stored as `failed`.
+- The guarantee: a write to data in the App's own database happens exactly once per Call id, even if the process stops mid-run. If it stops before the commit, nothing was kept and the next invoke of that id runs it again; after the commit, every invoke returns the stored Outcome.
+- Effects outside that database (an email, an HTTP call, another App) are at-least-once. `run()` receives `context.callId`; pass it on as the idempotency key.
+- A Call is stored as `running` before its transaction starts. The next invoke of that id moves it through `interrupted` and runs it again.
+- Two invokes of the same id at once share one run. A Hold is stored, so it survives a restart.
 - `decide` on an id that has ended returns its stored Outcome; on an unknown id it returns `rejected` with `unknown-call`.
 
-Two stores ship. `memoryStore()` is in the root entry point. `sqliteStore(path)` is in `@jaetask/open-agent-kit/sqlite`, on `node:sqlite`, so it needs Node 22.13 or later and no native dependency. Every script in `expect/calls` runs on both stores and must give the same output.
+Two stores ship. `memoryStore()` is in the root entry point; its transaction works on a copy of the data Map. `sqliteStore(db)` is in `@jaetask/open-agent-kit/sqlite`, on `node:sqlite`, so it needs Node 22.13 or later and no native dependency. Every script in `expect/calls` runs on both stores and must give the same output; `crash-before-commit` stops the process after the Domain's change and before the commit.

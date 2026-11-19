@@ -33,7 +33,7 @@ test("run() is a plain function of its input and dependencies", async () => {
   };
   const note = await addNote.run(
     { text: "milk" },
-    { principal: { id: "p1" }, change: () => {}, notes },
+    { principal: { id: "p1" }, callId: "c1", change: () => {}, notes },
   );
   assert.deepEqual(note, { id: "n1", owner: "p1", text: "milk" });
 });

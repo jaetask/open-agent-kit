@@ -9,6 +9,8 @@ import {
   defineDomain,
   type Effect,
   memoryStore,
+  provide,
+  type RunContext,
 } from "./index.js";
 
 // A Domain whose one Action per Effect logs when it starts and ends.
@@ -34,7 +36,7 @@ function timed() {
     about: "Timing.",
     actions: [action("read"), action("write")],
   });
-  const calls = createCalls({ domains: [{ domain, deps: {} }], store: memoryStore() });
+  const calls = createCalls({ domains: [provide(domain, () => ({}))], store: memoryStore() });
   const call = (id: string, effect: Effect): Call => ({
     id,
     action: `timed.${effect}-slowly`,
@@ -86,7 +88,7 @@ test("a read Action that records a change fails", async () => {
       }),
     ],
   });
-  const calls = createCalls({ domains: [{ domain, deps: {} }], store: memoryStore() });
+  const calls = createCalls({ domains: [provide(domain, () => ({}))], store: memoryStore() });
   const outcome = await calls.invoke({
     id: "c1",
     action: "sneaky.peek",
@@ -96,3 +98,60 @@ test("a read Action that records a change fails", async () => {
   });
   assert.equal(outcome.state, "failed");
 });
+
+test("a Domain change made before run() throws is rolled back", async () => {
+  const domain = defineDomain({
+    name: "counter",
+    version: "1.0.0",
+    about: "Counts.",
+    actions: [
+      defineAction({
+        name: "bump",
+        description: "Adds one, then fails.",
+        effect: "write",
+        input: z.object({}),
+        output: z.null(),
+        run: (_input, { data }: RunContext<{ data: Map<string, unknown> }>) => {
+          data.set("count", 1);
+          throw new Error("after the change");
+        },
+      }),
+    ],
+  });
+  const store = memoryStore();
+  const calls = createCalls({
+    store,
+    domains: [provide(domain, (data: Map<string, unknown>) => ({ data }))],
+  });
+  const outcome = await calls.invoke({
+    id: "c1",
+    action: "counter.bump",
+    input: {},
+    principal: { id: "p1" },
+    caller: "cli",
+  });
+  assert.equal(outcome.state, "failed");
+  assert.equal(await store.read(async (data) => data.get("count")), undefined);
+  assert.equal((await store.get("c1"))?.state, "failed");
+});
+
+// Never called: provide() must give a Domain the dependencies it declares.
+export function typeErrors() {
+  const domain = defineDomain({
+    name: "counter",
+    version: "1.0.0",
+    about: "Counts.",
+    actions: [
+      defineAction({
+        name: "read-count",
+        description: "Reads the count.",
+        effect: "read",
+        input: z.object({}),
+        output: z.number(),
+        run: (_input, { count }: RunContext<{ count: number }>) => count,
+      }),
+    ],
+  });
+  // @ts-expect-error the Domain needs { count }, not {}
+  return provide(domain, () => ({}));
+}
