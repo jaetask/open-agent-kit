@@ -37,6 +37,19 @@ One layer at a time. A layer is done when its proof is committed and green:
 
 Proofs are expect tests: an input file per case with a human-approved `name.expect.md` beside it.
 
+## Run the example
+
+The notes example is a small App: notes, an agent that can use them, and a page.
+
+```
+npm install
+npm run example
+```
+
+It runs at http://127.0.0.1:3120 and keeps its data in `data/`. At first start it prints a setup secret once: enter it on the page to sign in. The agent needs a model: set `KIT_MODEL` to `provider/model` with that provider's API key (as pi-ai reads it, for example `ANTHROPIC_API_KEY`), or point `KIT_OPENAI_BASE_URL` at an OpenAI-compatible server such as a local model server and set `KIT_MODEL=local/<model>`. Without one, the page still works and the chat says what is missing.
+
+With Docker, from the repository root: `docker compose -f examples/notes/compose.yaml up --build`. `examples/notes/compose.pair.yaml` runs two Apps paired together.
+
 ## Install
 
 Not published yet. It will be:

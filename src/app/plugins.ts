@@ -23,7 +23,7 @@ type Row = PluginLink & { claim?: string; token?: string };
 const major = (version: string) => version.split(".")[0];
 
 export type HostPlugins = {
-  /** Asks the App at `url` to pair, once. */
+  /** Asks the App at `url` to pair, once; `sync` asks again until it answers. */
   ask(url: string): Promise<void>;
   /** Claims tokens, installs approved Domains, and checks Contract versions. */
   sync(): Promise<void>;
@@ -114,7 +114,11 @@ export function hostPlugins(
     await plugin.close();
   };
 
+  const asking = new Set<string>();
   const sync = async () => {
+    for (const url of asking) {
+      await ask(url).catch(() => undefined); // not up yet: ask again at the next sync
+    }
     for (const row of all()) {
       try {
         if (row.state === "pairing") await claim(row);
@@ -134,19 +138,26 @@ export function hostPlugins(
     }
   };
 
+  const ask = async (url: string) => {
+    asking.add(url);
+    if (all().some((r) => r.url === url)) {
+      asking.delete(url);
+      return;
+    }
+    const response = await fetch(`${origin(url)}/pair`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ host: options.host, effects: options.effects }),
+    });
+    if (!response.ok) throw new Error(`${url} did not accept the pairing request`);
+    const { id, claim: secret } = (await response.json()) as { id: string; claim: string };
+    save({ url, connection: id, state: "pairing", domains: {}, claim: secret });
+    asking.delete(url);
+    options.log(`Asked ${url} to pair. Approve "${options.host}" there.`);
+  };
+
   return {
-    ask: async (url) => {
-      if (all().some((r) => r.url === url)) return;
-      const response = await fetch(`${origin(url)}/pair`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ host: options.host, effects: options.effects }),
-      });
-      if (!response.ok) throw new Error(`${url} did not accept the pairing request`);
-      const { id, claim: secret } = (await response.json()) as { id: string; claim: string };
-      save({ url, connection: id, state: "pairing", domains: {}, claim: secret });
-      options.log(`Asked ${url} to pair. Approve "${options.host}" there.`);
-    },
+    ask,
     sync,
     installed: () => [...installed.values()],
     list: () => all().map(({ claim: _, token: __, ...link }) => link),

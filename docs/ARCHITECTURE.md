@@ -372,3 +372,7 @@ The Host, started with `connect` (the example reads `KIT_CONNECT`, a comma-separ
 The page is plain HTML, CSS and one script, with no framework, build step or CDN, under a strict Content-Security-Policy (`default-src 'self'`, no inline script or style). It signs in with the setup secret; lists, adds and deletes notes with the Caller `ui`; shows held Calls with yes and no; refreshes on `/events`; and has a chat panel that sends Inputs (`POST /api/conversations/:to/inputs`) and draws the conversation from `GET /api/conversations/:to/view`, a server-sent stream of ConversationViews. Text from the App is set as text. Cards arrive with their `cardHtml` alongside (`card.html`), escaped on the server, and are the only markup the page inserts. `GET /health` answers `ok`.
 
 When a run ends without an answer, the pi adapter adds an agent message saying why (for example a model error), so the person is not left waiting; a run the person stopped says nothing.
+
+### Packaging
+
+`examples/notes/Dockerfile` builds the example as one container (Node 22.22, running as the `node` user) with one data volume at `/data` and a healthcheck on `/health`. `examples/notes/compose.yaml` runs one App on port 3120; `examples/notes/compose.pair.yaml` runs `tasks` on 3120 and `talk` on 3121 with `KIT_CONNECT=http://tasks:3120/mcp`. A Host keeps asking the other App to pair until it answers, so the order the containers start in does not matter.

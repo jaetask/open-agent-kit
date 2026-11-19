@@ -1,0 +1,35 @@
+# Two notes Apps paired together. "talk" asks "tasks" to pair at first
+# start; approve it on tasks' page (http://localhost:3120), and talk's agent
+# (http://localhost:3121) can then use tasks' notes. Run from the repository root:
+#   docker compose -f examples/notes/compose.pair.yaml up --build
+services:
+  tasks:
+    build:
+      context: ../..
+      dockerfile: examples/notes/Dockerfile
+    ports: ["3120:3120"]
+    volumes: [tasks-data:/data]
+    environment:
+      KIT_NAME: tasks
+      KIT_SETUP_SECRET: ${KIT_SETUP_SECRET:-}
+    restart: unless-stopped
+  talk:
+    build:
+      context: ../..
+      dockerfile: examples/notes/Dockerfile
+    ports: ["3121:3120"]
+    volumes: [talk-data:/data]
+    environment:
+      KIT_NAME: talk
+      KIT_CONNECT: http://tasks:3120/mcp
+      KIT_SETUP_SECRET: ${KIT_SETUP_SECRET:-}
+      KIT_MODEL: ${KIT_MODEL:-}
+      KIT_OPENAI_BASE_URL: ${KIT_OPENAI_BASE_URL:-}
+      KIT_OPENAI_API_KEY: ${KIT_OPENAI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on: [tasks]
+    restart: unless-stopped
+volumes:
+  tasks-data:
+  talk-data:
