@@ -3,6 +3,7 @@
 // to write new output, then read it before committing.
 import { snap } from "@jaetask/snap";
 import { CALL_MACHINE, contract, type Domain, fakeRuntime } from "../src/index.js";
+import { runApp } from "./app.js";
 import { runApps } from "./apps.js";
 import { renderScript } from "./calls.js";
 import { renderCard } from "./cards.js";
@@ -75,6 +76,11 @@ const failed = await snap([
     // Cards: Outcome in, CardView, text and HTML out.
     dir: "expect/cards",
     render: renderCard,
+  },
+  {
+    // The notes example as a running App over real HTTP.
+    dir: "expect/app",
+    render: runApp,
   },
 ]);
 process.exit(failed === 0 ? 0 : 1);

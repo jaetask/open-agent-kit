@@ -4,7 +4,7 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { DatabaseSync } from "node:sqlite";
-import { type Calls, createCalls, type Plugin, type Provided } from "../calls.js";
+import { type Calls, type ChangeEvent, createCalls, type Plugin, type Provided } from "../calls.js";
 import type { Connections } from "../connection.js";
 import { localSource, pluginSource } from "../local-source.js";
 import { remoteSource, type RemoteOptions } from "../mcp/client.js";
@@ -46,7 +46,9 @@ export type App = {
    * Runtime so a waiting conversation carries on. Returns the expired Outcomes.
    */
   sweepHolds(): Promise<Outcome[]>;
-  /** Answers HTTP: `/mcp` serves this App's Domains. */
+  /** Calls `listener` with every ChangeEvent; returns a function that stops it. */
+  onChange(listener: (event: ChangeEvent) => void): () => void;
+  /** Answers HTTP: `/mcp` serves this App's Domains; `/events` streams ChangeEvents. */
   fetch(request: Request): Promise<Response>;
   /** Serves `fetch` on Node's http. Port 0 picks a free port. */
   listen(port: number, host?: string): Promise<string>;
@@ -61,8 +63,12 @@ export async function createApp(options: AppOptions): Promise<App> {
   const remotes = await Promise.all((options.plugins ?? []).map((p) => remoteSource(p)));
   const plugins: Plugin[] = [];
   for (const source of remotes) plugins.push({ contract: await source.contract(), source });
+  const listeners = new Set<(event: ChangeEvent) => void>();
   const calls = createCalls({
     store,
+    onChange: (event) => {
+      for (const listener of listeners) listener(event);
+    },
     domains: options.domains,
     plugins,
     ...(options.holdFor === undefined ? {} : { holdFor: options.holdFor }),
@@ -81,9 +87,40 @@ export async function createApp(options: AppOptions): Promise<App> {
     ...plugins.map((p) => pluginSource(p, calls)),
   ]);
 
+  // One server-sent event per ChangeEvent, and a comment every 15 seconds.
+  const events = () => {
+    let stop = () => {};
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const encoder = new TextEncoder();
+        const send = (text: string) => controller.enqueue(encoder.encode(text));
+        const listener = (event: ChangeEvent) => {
+          const { call, changes } = event;
+          const data = { call: call.id, action: call.action, caller: call.caller, changes };
+          send(`event: change\ndata: ${JSON.stringify(data)}\n\n`);
+        };
+        const ping = setInterval(() => send(": ping\n\n"), 15_000);
+        listeners.add(listener);
+        streams.add(controller);
+        stop = () => {
+          clearInterval(ping);
+          listeners.delete(listener);
+          streams.delete(controller);
+        };
+        send(": connected\n\n");
+      },
+      cancel: () => stop(),
+    });
+    return new Response(body, {
+      headers: { "content-type": "text/event-stream", "cache-control": "no-store" },
+    });
+  };
+  const streams = new Set<ReadableStreamDefaultController<Uint8Array>>();
+
   const fetch = async (request: Request) => {
     const { pathname } = new URL(request.url);
     if (pathname === "/mcp") return mcp(request);
+    if (pathname === "/events" && request.method === "GET") return events();
     return new Response("Not found", { status: 404 });
   };
 
@@ -118,8 +155,14 @@ export async function createApp(options: AppOptions): Promise<App> {
       await new Promise<void>((resolve) => http?.listen(port, host, resolve));
       return `http://${host}:${(http.address() as AddressInfo).port}`;
     },
+    onChange: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
     close: async () => {
       clearInterval(sweeper);
+      for (const stream of streams) stream.close();
+      streams.clear();
       await options.runtime?.close();
       for (const source of remotes) await source.close();
       if (http) {

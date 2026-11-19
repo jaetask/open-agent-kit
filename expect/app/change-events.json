@@ -1,0 +1,51 @@
+{
+  "steps": [
+    {
+      "ui": {
+        "id": "u1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "ui": {
+        "id": "u1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "host": {
+        "id": "h1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "bread"
+        }
+      }
+    },
+    {
+      "chat": {
+        "to": "t1",
+        "text": "call notes.add-note {\"text\":\"eggs\"}\ncall notes.delete-note {\"id\":\"n1\"}"
+      }
+    },
+    {
+      "decide": {
+        "to": "t1",
+        "call": "t1-r1-c2",
+        "decision": "yes"
+      }
+    },
+    {
+      "ui": {
+        "id": "u2",
+        "action": "notes.list-notes",
+        "input": {}
+      }
+    }
+  ]
+}

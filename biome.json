@@ -26,7 +26,14 @@
   },
   "overrides": [
     {
-      "includes": ["src/pi/**", "src/mcp/**", "expect/pi*.ts", "expect/mcp*.ts", "expect/apps.ts"],
+      "includes": [
+        "src/pi/**",
+        "src/mcp/**",
+        "expect/pi*.ts",
+        "expect/mcp*.ts",
+        "expect/apps.ts",
+        "expect/app.ts"
+      ],
       "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
     }
   ]

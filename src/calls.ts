@@ -55,7 +55,15 @@ export type CallsOptions<Data> = {
   holdFor?: number;
   /** The clock. Defaults to Date.now. */
   now?: () => number;
+  /**
+   * Called once for each Call that succeeds with Changes, after its Outcome
+   * is stored: never for a retry that returns the stored Outcome.
+   */
+  onChange?: (event: ChangeEvent) => void;
 };
+
+/** What one Call changed, for pages that show the changed things. */
+export type ChangeEvent = { call: Call; changes: Change[] };
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -197,7 +205,16 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     });
   };
 
+  // Runs a Call and, once its Outcome is stored, tells onChange what it changed.
   const execute = async (record: CallRecord): Promise<Outcome> => {
+    const outcome = await executeNow(record);
+    if (outcome.state === "succeeded" && outcome.changes.length > 0) {
+      options.onChange?.({ call: record.call, changes: outcome.changes });
+    }
+    return outcome;
+  };
+
+  const executeNow = async (record: CallRecord): Promise<Outcome> => {
     const plugin = remote.get(record.call.action);
     if (plugin) return executeRemote(record, plugin);
     const effect = actions.get(record.call.action)?.action.effect;

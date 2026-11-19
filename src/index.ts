@@ -7,7 +7,7 @@ export { defineAction, EFFECTS } from "./action.js";
 export type { ActionName, Call, Caller, CallId, Principal } from "./call.js";
 export type { CallEvent, CallState } from "./call-machine.js";
 export { CALL_MACHINE } from "./call-machine.js";
-export type { Calls, CallsOptions, Plugin, Provided } from "./calls.js";
+export type { Calls, CallsOptions, ChangeEvent, Plugin, Provided } from "./calls.js";
 export { createCalls, provide } from "./calls.js";
 export type { Card, CardDefinitionView, CardView } from "./card.js";
 export {
