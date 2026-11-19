@@ -1,0 +1,16 @@
+{
+  "steps": [
+    {
+      "crash_next_write": true
+    },
+    {
+      "submit": {
+        "to": "t1",
+        "text": "call notes.add-note {\"text\":\"milk\"}\ncall notes.list-notes {}"
+      }
+    },
+    {
+      "restart": true
+    }
+  ]
+}

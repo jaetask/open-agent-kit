@@ -573,6 +573,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
         on: (view: ConversationView) => void): Unwatch;
   resume(call: CallId, outcome: Outcome): Promise&lt;void&gt;;
   stop(c: ConversationId): Promise&lt;void&gt;;
+  close(): Promise&lt;void&gt;;
 }</pre>
 <pre><span class="c">// Seam 2. Adapters: browser session, connection token.</span>
 <span class="k">interface</span> Identity {
@@ -588,7 +589,7 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
     </div>
     <figure class="fig">
       <div class="fig-scroll">
-      <svg viewBox="0 0 960 250" style="min-width:740px" role="img" aria-label="How the pi-durable adapter maps Kit concepts. An Action becomes a pi tool. A read Effect becomes replay safe and parallel. A write or danger Effect becomes sequential, made replay safe by the Call id dedupe. A held Call becomes a parked tool call waiting on a signal. A Decision becomes harness.signal. A ConversationView is built from pi's watch. Nothing on the right is visible outside kit-pi.">
+      <svg viewBox="0 0 960 250" style="min-width:740px" role="img" aria-label="How the pi-durable adapter maps Kit concepts. An Action becomes a pi tool. A read Effect becomes replay safe and parallel. A write or danger Effect becomes sequential, made replay safe by the Call id dedupe. A held Call becomes a tool call that shows the Hold in its details and waits. resume gives the waiting tool the Outcome; after a restart, the rerun tool reads it from the pipeline. A ConversationView is built from pi's watch. Nothing on the right is visible outside kit-pi.">
         <defs><marker id="m1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="mk-pi"/></marker></defs>
         <text x="20" y="22" class="th">Kit says</text><text x="560" y="22" class="th c-pi">kit-pi turns it into (pi-durable 1.5.2)</text>
         <g>
@@ -602,10 +603,10 @@ details.prob .attack b{color:var(--bad)} details.prob .answer2 b{color:var(--ok)
           <rect x="560" y="106" width="380" height="30" rx="6" class="s-pi"/><text x="574" y="126" class="tm">replay: "safe", executionMode: "sequential"</text>
           <line x1="320" y1="121" x2="557" y2="121" class="ln-pi" marker-end="url(#m1a)"/>
           <rect x="20" y="142" width="300" height="30" rx="6" class="s-warn"/><text x="34" y="162" class="t">Outcome: held</text>
-          <rect x="560" y="142" width="380" height="30" rx="6" class="s-pi"/><text x="574" y="162" class="tm">tool returns { sleep: { signals, until } }</text>
+          <rect x="560" y="142" width="380" height="30" rx="6" class="s-pi"/><text x="574" y="162" class="tm">tool details show the Hold; the tool waits</text>
           <line x1="320" y1="157" x2="557" y2="157" class="ln-pi" marker-end="url(#m1a)"/>
           <rect x="20" y="178" width="300" height="30" rx="6" class="s-box"/><text x="34" y="198" class="t">resume(call, outcome) after a Decision</text>
-          <rect x="560" y="178" width="380" height="30" rx="6" class="s-pi"/><text x="574" y="198" class="tm">harness.signal(taskId, Decided, key, …)</text>
+          <rect x="560" y="178" width="380" height="30" rx="6" class="s-pi"/><text x="574" y="198" class="tm">the tool returns it; a rerun reads it</text>
           <line x1="320" y1="193" x2="557" y2="193" class="ln-pi" marker-end="url(#m1a)"/>
           <rect x="20" y="214" width="300" height="30" rx="6" class="s-box"/><text x="34" y="234" class="t">ConversationView · CardView</text>
           <rect x="560" y="214" width="380" height="30" rx="6" class="s-pi"/><text x="574" y="234" class="tm">conversation.watch() · tool details</text>
@@ -786,7 +787,7 @@ $("#simReset").addEventListener("click",()=>{cur="received";trail=["received"];r
 const P = [
  ["“You built on an experimental library that breaks every release.”",
   "pi-durable's README says the API changes without notice.",
-  "Only <code>kit-pi</code> imports it. Five methods cross the seam. One conformance suite runs against the fake and the real adapter, so an upgrade is one package and one red-to-green test run. Version pinned exactly. Cost: features of pi-durable we don't wrap are unavailable until we do."],
+  "Only <code>kit-pi</code> imports it. Six methods cross the seam. One conformance suite runs against the fake and the real adapter, so an upgrade is one package and one red-to-green test run. Version pinned exactly. Cost: features of pi-durable we don't wrap are unavailable until we do."],
  ["“Two state machines for the same thing: yours and pi-durable's.”",
   "The Call machine and pi's tool task both claim to track a call.",
   "They track different things. The Call machine is the domain truth and works with no agent at all (a button click is a Call). pi-durable is only how the agent's wait survives a restart. The adapter translates one way: Outcome in, park or result out. The Call store is authoritative; if they ever disagree, the Call id lookup wins."],

@@ -56,7 +56,7 @@ npm run expect
 npm run build
 ```
 
-Node 22.13 or later. `npm install` also turns on the git hooks in `.agents/guardrails/hooks`.
+Node 22.13 or later; the `/pi` entry point needs Node 22.19. `npm install` also turns on the git hooks in `.agents/guardrails/hooks`.
 
 ## Inspiration
 
@@ -69,7 +69,7 @@ Node 22.13 or later. `npm install` also turns on the git hooks in `.agents/guard
 
 ## Software used
 
-- [@earendil-works/pi-durable](https://github.com/earendil-works/pi) (MIT): agent runtime, behind an adapter.
+- [@earendil-works/pi-durable](https://github.com/earendil-works/pi) 1.5.2 (MIT), with pi-ai and chord: agent runtime, behind the `/pi` adapter; optional peer dependencies.
 - machina: state machines and their visualisers.
 - [@jaetask/snap](https://github.com/jaetask/snap) (MIT): expect tests.
 - [Model Context Protocol](https://modelcontextprotocol.io): app to app communication.

@@ -32,7 +32,9 @@ export interface ActionSource {
 /**
  * Whatever runs agent conversations. Its Calls go through `ActionSource.run`
  * with the Caller `agent`. A held Call leaves the conversation `waiting`
- * until `resume` gives it the Call's final Outcome.
+ * until `resume` gives it the Call's final Outcome. The Runtime keeps the link
+ * from a Call to its conversation itself, durably; the pipeline and the Hold
+ * know nothing of conversations.
  */
 export interface AgentRuntime {
   start(actions: ActionSource[]): Promise<void>;
@@ -40,4 +42,6 @@ export interface AgentRuntime {
   watch(to: ConversationId, on: (view: ConversationView) => void): Unwatch;
   resume(call: CallId, outcome: Outcome): Promise<void>;
   stop(to: ConversationId): Promise<void>;
+  /** Shuts the Runtime down. Conversations continue when it is started again on the same storage. */
+  close(): Promise<void>;
 }

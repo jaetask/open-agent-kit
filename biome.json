@@ -2,5 +2,28 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": { "includes": ["**", "!docs", "!.claude", "!**/*.expect.md"] },
-  "formatter": { "indentStyle": "space", "lineWidth": 100 }
+  "formatter": { "indentStyle": "space", "lineWidth": 100 },
+  "linter": {
+    "rules": {
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["@earendil-works/*", "@earendil-works/*/**"],
+                "message": "Only the /pi entry point (src/pi) may import pi-durable and its packages."
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/pi/**", "expect/pi*.ts"],
+      "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
+    }
+  ]
 }

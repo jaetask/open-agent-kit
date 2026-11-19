@@ -32,9 +32,9 @@ export const scriptPlan: Plan = (input) =>
     return m ? [{ action: m[1] as ActionName, input: JSON.parse(m[2] as string) }] : [];
   });
 
-const tick = () => new Promise((resolve) => setImmediate(resolve));
+const tick = () => new Promise((resolve) => setTimeout(resolve, 2));
 
-function describe(m: Message): string {
+export function describe(m: Message): string {
   if (m.from !== "call") return `${m.from}: ${JSON.stringify(m.text)}`;
   const o = m.outcome;
   const what =
@@ -70,11 +70,16 @@ export async function runConformance(input: string, factory: RuntimeFactory): Pr
     });
   };
   // Waits until the conversation is waiting for a Decision, stopped, or
-  // idle with every Input taken.
-  const settle = async (to: string) => {
-    for (let i = 0; i < 1000; i++) {
+  // idle with every Input taken; after a Decision, only once the decided
+  // Call's final Outcome is shown.
+  const settle = async (to: string, decided?: string) => {
+    for (const end = Date.now() + 10_000; Date.now() < end; ) {
       await tick();
       const view = views.get(to);
+      const shown = view?.messages.some(
+        (m) => m.from === "call" && m.call === decided && m.outcome.state !== "held",
+      );
+      if (decided && !shown && view?.status !== "stopped") continue;
       const taken = view?.messages.filter((m) => m.from === "person").length ?? 0;
       if (view?.status === "waiting" || view?.status === "stopped") return;
       if (view?.status === "idle" && taken >= (submitted.get(to) ?? 0)) return;
@@ -96,7 +101,7 @@ export async function runConformance(input: string, factory: RuntimeFactory): Pr
       const { to, call, decision } = step.decide;
       const outcome = await calls.decide(call, decision);
       await runtime.resume(call, outcome);
-      await settle(to);
+      await settle(to, call);
       lines.push(`${n} decide ${call} ${decision}, then resume`);
     } else {
       watch(step.stop);

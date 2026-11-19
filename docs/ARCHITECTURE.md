@@ -120,6 +120,7 @@ interface AgentRuntime {
   watch(to: ConversationId, on: (view: ConversationView) => void): Unwatch;
   resume(call: CallId, outcome: Outcome): Promise<void>;
   stop(to: ConversationId): Promise<void>;
+  close(): Promise<void>;
 }
 
 interface ActionSource {
@@ -132,8 +133,9 @@ interface ActionSource {
 - `submit` queues an Input; a conversation takes Inputs in order. It returns the RunId at once.
 - A Runtime makes each Call through `ActionSource.run` with the Caller `agent` and the id `<RunId>-c<n>`, so a rerun after a restart reuses the id and gets the stored Outcome.
 - A `held` Outcome leaves the conversation `waiting`. The App asks the person, calls `calls.decide`, and passes the final Outcome to `resume(call, outcome)`; the conversation then carries on.
-- `watch` calls `on` at once with the current `ConversationView`, then after every change. A view has a `status` (`idle`, `running`, `waiting` or `stopped`) and its messages, oldest first: the person's text, the agent's text, and one entry per Call Outcome.
-- `stop` ends a conversation; later Inputs are ignored.
+- `watch` calls `on` with the current `ConversationView` as soon as it has it, then after every change. A view has a `status` (`idle`, `running`, `waiting` or `stopped`) and its messages, oldest first: the person's text, the agent's text, and one entry per Call Outcome.
+- `stop` ends a conversation; later Inputs are ignored. `close` shuts the Runtime down; started again on the same storage, it carries on.
+- The pipeline and the Hold know nothing of conversations. The Runtime keeps the link from a Call to its conversation itself, durably: Call ids are derived from the run, so after a restart the adapter finds the waiting call again. `resume(call, outcome)` therefore needs only the Call id.
 
 `localSource(domain, calls)` is the ActionSource for a Domain in this App: its Contract, and its Calls through the pipeline.
 
@@ -144,3 +146,45 @@ interface ActionSource {
 ### The conformance suite
 
 `expect/runtime` holds conversation scripts: submit, decide then resume, stop. The plan is read from the text: each line `call <action> <json input>` is one Call. `expect/runtime.ts` exports `runConformance(input, factory)`. Every Runtime adapter adds one entry over the same folder in `expect/snap.ts`, and its output must match the approved files exactly. The cases cover a plain reply, a write then a read, a Hold decided later, a declined Hold, a refused Call, an unknown Action, stopping while waiting, two conversations at once, and Inputs taken in order behind a Hold.
+
+## Layer 4: pi-durable adapter
+
+```ts
+import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
+import { piRuntime } from "@jaetask/open-agent-kit/pi";
+
+const runtime = piRuntime({
+  storage: await openNodeSqliteStorage("pi.db", { prefix: "pi_" }),
+  models, // a pi-ai Models with a provider set
+  model: { provider: "<provider>", modelId: "<model>" },
+});
+await runtime.start([localSource(notesDomain, calls)]);
+```
+
+`@jaetask/open-agent-kit/pi` is the only part of the Kit that imports pi-durable. `@earendil-works/pi-durable`, `@earendil-works/pi-ai` and `@earendil-works/chord` are optional peer dependencies, pinned to 1.5.2, and need Node 22.19 or later. A Biome lint rule fails any import of them outside `src/pi`.
+
+| Kit | pi-durable 1.5.2 |
+| --- | --- |
+| an ActionSource | one extension, named after the Domain |
+| an Action | one tool, named `domain__action`; its parameters are the Contract's input JSON Schema |
+| Effect `read` | `replay: "safe"`, `executionMode: "parallel"` |
+| Effect `write` or `danger` | `replay: "safe"`, `executionMode: "sequential"` |
+| a Call | the tool call; its id is `<RunId>-<pi tool call id>`, and its Principal is the one who submitted the Input |
+| Outcome `held` | the tool records the Outcome in its details and waits in memory |
+| `resume(call, outcome)` | the waiting tool returns that Outcome |
+| a restart while held | pi reruns the tool; it invokes the same Call id and gets the Hold, or the final Outcome if it was decided meanwhile |
+| a Kit conversation id | a pi conversation, linked in the session document `kit.conversations` with its Input count and whether it was stopped |
+| an Input | a pi input placed as a `kit.input` entry holding the RunId, the Principal and the text; the RunId is its request id |
+| ConversationView | built from pi's conversation watch: `kit.input` entries, final answers, tool results and running tool details |
+
+Every tool is replay-safe because the pipeline returns the stored Outcome for a Call id it has seen. The Runtime never decides a Hold, expiry included: the App calls `calls.decide(id, "expired")`, or any late Decision returns `expired`, and passes the Outcome to `resume`. A tool rerun after the Hold's expiry gets `expired` from the pipeline.
+
+### Storage
+
+pi-durable keeps its state in its own SQLite file, through its own connection, with the table prefix `pi_`. The CallStore and the Domains share the App's database file. They are separate files because both hold write transactions open across awaits: on one file, pi's commits would meet the App's open transaction and fail with `SQLITE_BUSY`.
+
+What is transactional: a Domain's change and its Outcome, in the App's database. What is not: pi's record of a tool call and the CallStore. If the process stops after the App commits and before pi records the tool result, pi reruns the tool, the pipeline returns the stored Outcome, and nothing runs twice.
+
+### Proofs
+
+`expect/runtime` runs on the fake and on pi, with a scripted model: pi-ai's faux provider answers each Input with the Calls its `call <action> <json>` lines name, then `Done.`. `expect/pi` holds cases only a durable Runtime can pass: a restart while a conversation waits on a Hold; a Hold decided while the Runtime was closed; a restart while a write is mid-transaction, which leaves one note and a Call that went through `interrupted`; a late yes refused as expired; and a Hold that expired while the Runtime was closed.

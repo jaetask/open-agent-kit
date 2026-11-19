@@ -33,6 +33,10 @@
     "./sqlite": {
       "types": "./dist/sqlite.d.ts",
       "import": "./dist/sqlite.js"
+    },
+    "./pi": {
+      "types": "./dist/pi/index.d.ts",
+      "import": "./dist/pi/index.js"
     }
   },
   "publishConfig": {
@@ -55,6 +59,9 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.5",
+    "@earendil-works/chord": "1.5.2",
+    "@earendil-works/pi-ai": "1.5.2",
+    "@earendil-works/pi-durable": "1.5.2",
     "@jaetask/snap": "0.1.0",
     "@types/node": "22.18.0",
     "tsx": "4.20.5",
@@ -62,5 +69,21 @@
   },
   "dependencies": {
     "zod": "4.6.7"
+  },
+  "peerDependencies": {
+    "@earendil-works/chord": "1.5.2",
+    "@earendil-works/pi-ai": "1.5.2",
+    "@earendil-works/pi-durable": "1.5.2"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/chord": {
+      "optional": true
+    },
+    "@earendil-works/pi-ai": {
+      "optional": true
+    },
+    "@earendil-works/pi-durable": {
+      "optional": true
+    }
   }
 }

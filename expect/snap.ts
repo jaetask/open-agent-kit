@@ -6,6 +6,8 @@ import { CALL_MACHINE, contract, type Domain, fakeRuntime } from "../src/index.j
 import { renderScript } from "./calls.js";
 import { buildDomain } from "./definitions.js";
 import { renderContract, renderExports, renderMachine } from "./render.js";
+import { piFactory } from "./pi.js";
+import { runDurability } from "./pi-durability.js";
 import { runConformance } from "./runtime.js";
 
 const load = async (module: string): Promise<Record<string, unknown>> =>
@@ -45,6 +47,16 @@ const failed = await snap([
     // its own entry over the same folder; all must match the approved files.
     dir: "expect/runtime",
     render: (input) => runConformance(input, fakeRuntime),
+  },
+  {
+    // The same suite on the pi-durable adapter, with a scripted model.
+    dir: "expect/runtime",
+    render: (input) => runConformance(input, piFactory()),
+  },
+  {
+    // pi-durable only: restarts, a crash during a write, expiry.
+    dir: "expect/pi",
+    render: runDurability,
   },
 ]);
 process.exit(failed === 0 ? 0 : 1);

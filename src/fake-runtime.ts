@@ -113,6 +113,7 @@ export function fakeRuntime(plan: Plan): AgentRuntime {
       waiting.delete(call);
       held.resolve(outcome);
     },
+    close: async () => {},
     stop: async (to) => {
       const c = open(to);
       c.view.status = "stopped";
