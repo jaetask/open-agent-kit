@@ -1,0 +1,11 @@
+{
+  "steps": [
+    {
+      "submit": {
+        "to": "t1",
+        "as": "guest",
+        "text": "call notes.add-note {\"text\":\"milk\"}\ncall notes.list-notes {}"
+      }
+    }
+  ]
+}

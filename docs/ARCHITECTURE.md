@@ -110,3 +110,37 @@ A `CallStore<Data>` keeps each Call as a `CallRecord` (the Call, its state, its 
 - `decide` on an id that has ended returns its stored Outcome; on an unknown id it returns `rejected` with `unknown-call`.
 
 Two stores ship. `memoryStore()` is in the root entry point; its transaction works on a copy of the data Map. `sqliteStore(db)` is in `@jaetask/open-agent-kit/sqlite`, on `node:sqlite`, so it needs Node 22.13 or later and no native dependency. Every script in `expect/calls` runs on both stores and must give the same output; `crash-before-commit` stops the process after the Domain's change and before the commit.
+
+## Layer 3: Runtime seam, fake Runtime and conformance suite
+
+```ts
+interface AgentRuntime {
+  start(actions: ActionSource[]): Promise<void>;
+  submit(to: ConversationId, input: Input, as: Principal): Promise<RunId>;
+  watch(to: ConversationId, on: (view: ConversationView) => void): Unwatch;
+  resume(call: CallId, outcome: Outcome): Promise<void>;
+  stop(to: ConversationId): Promise<void>;
+}
+
+interface ActionSource {
+  contract(): Promise<Contract>;
+  run(call: Call): Promise<Outcome>;
+}
+```
+
+- `start` receives every ActionSource the agent may use, one per Domain or Plugin.
+- `submit` queues an Input; a conversation takes Inputs in order. It returns the RunId at once.
+- A Runtime makes each Call through `ActionSource.run` with the Caller `agent` and the id `<RunId>-c<n>`, so a rerun after a restart reuses the id and gets the stored Outcome.
+- A `held` Outcome leaves the conversation `waiting`. The App asks the person, calls `calls.decide`, and passes the final Outcome to `resume(call, outcome)`; the conversation then carries on.
+- `watch` calls `on` at once with the current `ConversationView`, then after every change. A view has a `status` (`idle`, `running`, `waiting` or `stopped`) and its messages, oldest first: the person's text, the agent's text, and one entry per Call Outcome.
+- `stop` ends a conversation; later Inputs are ignored.
+
+`localSource(domain, calls)` is the ActionSource for a Domain in this App: its Contract, and its Calls through the pipeline.
+
+### The fake Runtime
+
+`fakeRuntime(plan)` has no model. `plan(input)` returns the Calls the agent makes for that Input, in order; an Input with no Calls gets the reply `You said: <text>`, and a finished Input ends with `Done.`. It keeps everything in memory. Tests of Apps, and the conformance suite, run on it.
+
+### The conformance suite
+
+`expect/runtime` holds conversation scripts: submit, decide then resume, stop. The plan is read from the text: each line `call <action> <json input>` is one Call. `expect/runtime.ts` exports `runConformance(input, factory)`. Every Runtime adapter adds one entry over the same folder in `expect/snap.ts`, and its output must match the approved files exactly. The cases cover a plain reply, a write then a read, a Hold decided later, a declined Hold, a refused Call, an unknown Action, stopping while waiting, two conversations at once, and Inputs taken in order behind a Hold.

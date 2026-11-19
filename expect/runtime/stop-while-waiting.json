@@ -1,0 +1,19 @@
+{
+  "steps": [
+    {
+      "submit": {
+        "to": "t1",
+        "text": "call notes.add-note {\"text\":\"milk\"}\ncall notes.delete-note {\"id\":\"n1\"}\ncall notes.list-notes {}"
+      }
+    },
+    {
+      "stop": "t1"
+    },
+    {
+      "submit": {
+        "to": "t1",
+        "text": "hello"
+      }
+    }
+  ]
+}

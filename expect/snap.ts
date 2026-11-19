@@ -2,10 +2,11 @@
 // output sits beside it as name.expect.md. Run `npm run expect -- --update`
 // to write new output, then read it before committing.
 import { snap } from "@jaetask/snap";
-import { CALL_MACHINE, contract, type Domain } from "../src/index.js";
+import { CALL_MACHINE, contract, type Domain, fakeRuntime } from "../src/index.js";
 import { renderScript } from "./calls.js";
 import { buildDomain } from "./definitions.js";
 import { renderContract, renderExports, renderMachine } from "./render.js";
+import { runConformance } from "./runtime.js";
 
 const load = async (module: string): Promise<Record<string, unknown>> =>
   import(new URL(`../${module}`, import.meta.url).href);
@@ -38,6 +39,12 @@ const failed = await snap([
     // Input: a Call script. Output: each step's Outcome, the transitions, the notes.
     dir: "expect/calls",
     render: renderScript,
+  },
+  {
+    // The Runtime conformance suite, on the fake Runtime. Each adapter adds
+    // its own entry over the same folder; all must match the approved files.
+    dir: "expect/runtime",
+    render: (input) => runConformance(input, fakeRuntime),
   },
 ]);
 process.exit(failed === 0 ? 0 : 1);

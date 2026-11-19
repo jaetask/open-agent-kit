@@ -1,0 +1,23 @@
+{
+  "steps": [
+    {
+      "submit": {
+        "to": "t1",
+        "text": "call notes.add-note {\"text\":\"milk\"}\ncall notes.delete-note {\"id\":\"n1\"}"
+      }
+    },
+    {
+      "submit": {
+        "to": "t1",
+        "text": "call notes.list-notes {}"
+      }
+    },
+    {
+      "decide": {
+        "to": "t1",
+        "call": "t1-r1-c2",
+        "decision": "yes"
+      }
+    }
+  ]
+}

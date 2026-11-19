@@ -1,8 +1,8 @@
 import { z } from "zod";
 import type { CallId, Principal } from "./call.js";
 import type { Card } from "./card.js";
-import type { Change } from "./outcome.js";
 import { checkName, checkText, fail } from "./names.js";
+import type { Change } from "./outcome.js";
 
 /** What an Action does to the world. Declared once; everything else follows from it. */
 export type Effect = "read" | "write" | "danger";

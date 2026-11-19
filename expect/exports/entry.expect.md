@@ -15,5 +15,7 @@
 | defineAction |
 | defineCard |
 | defineDomain |
+| fakeRuntime |
+| localSource |
 | memoryStore |
 | provide |
