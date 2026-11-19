@@ -1,15 +1,11 @@
-// MCP cases: one App serves the notes Domain; each step talks to it over
-// streamable HTTP as a Connection, or with no valid token at all.
-import { createServer } from "node:http";
-import type { AddressInfo } from "node:net";
-import { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync } from "node:sqlite";
 import { table } from "@jaetask/snap";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { notesDomain } from "../examples/notes/domain.js";
 import { sqliteNotes } from "../examples/notes/notes.js";
-import { createCalls, type Effect, type Outcome, provide } from "../src/index.js";
-import { CALL_ID, DECISION, mcpServer, nodeListener } from "../src/mcp/index.js";
-import { sqliteConnections, sqliteStore } from "../src/sqlite.js";
+import { createApp } from "../src/app/index.js";
+import { type Effect, type Outcome, provide } from "../src/index.js";
+import { CALL_ID, DECISION } from "../src/mcp/index.js";
 
 type ConnectionData = {
   name: string;
@@ -47,14 +43,14 @@ export async function runMcp(input: string): Promise<string> {
     connections: ConnectionData[];
     steps: Step[];
   };
-  const db = new DatabaseSync(":memory:");
-  const store = sqliteStore(db);
-  const calls = createCalls({
-    store,
+  const app = await createApp({
+    name: "notes",
+    version: "1",
+    file: ":memory:",
     now: () => Date.parse("2026-01-01T00:00:00Z"),
     domains: [provide(notesDomain, (db: DatabaseSync) => ({ notes: sqliteNotes(db) }))],
   });
-  const connections = sqliteConnections(db);
+  const { db, store, connections } = app;
   const tokens = new Map<string, string>([["wrong", "kit_not-a-token"]]);
   const ids = new Map<string, string>(); // Connection name → id
   const hosts = new Map<string, string>(); // Connection id → name
@@ -69,13 +65,7 @@ export async function runMcp(input: string): Promise<string> {
     tokens.set(c.name, await connections.approve(made.id));
     if (c.state === "revoked") await connections.revoke(made.id);
   }
-  const http = createServer(
-    nodeListener(
-      mcpServer({ domains: [notesDomain], calls, connections, name: "notes", version: "1" }),
-    ),
-  );
-  await new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve));
-  const url = `http://127.0.0.1:${(http.address() as AddressInfo).port}/mcp`;
+  const url = `${await app.listen(0)}/mcp`;
   const clients = new Map<string, Client>();
   const client = async (as: string) => {
     let found = clients.get(as);
@@ -200,8 +190,6 @@ export async function runMcp(input: string): Promise<string> {
     ].join("\n\n");
   } finally {
     for (const c of clients.values()) await c.close();
-    http.closeAllConnections();
-    await new Promise((resolve) => http.close(resolve));
-    db.close();
+    await app.close();
   }
 }

@@ -292,3 +292,23 @@ const noteList = defineCard({
 - `expect/definitions`: `with-cards`, and error cases for an unknown kind, an unknown key, a bad path, a template in a path, no fields, no title and no view.
 - `expect/contract/notes.expect.md` shows the Card views and the catalogue version.
 - `expect/apps`: the Host draws each Card from the Outcome it received over MCP, and the case fails unless it is identical to the Card the owning App made.
+
+## Layer 7: A runnable App
+
+### createApp
+
+```ts
+import { createApp } from "@jaetask/open-agent-kit/app";
+
+const app = await createApp({
+  name: "notes",
+  version: "1.0.0",
+  file: "data/app.db",
+  domains: [provide(notesDomain, (db: DatabaseSync) => ({ notes: sqliteNotes(db) }))],
+  plugins: [{ url: "http://tasks:3120/mcp", token, domain: "tasks" }],
+  runtime: piRuntime({ storage, models, model }),
+});
+await app.listen(3120);
+```
+
+`createApp` opens the App database, builds its CallStore, Connections and pipeline, installs each Plugin through `remoteSource`, starts the Runtime with a local source per Domain and a Plugin source per Plugin, and answers HTTP with `app.fetch`: `/mcp` serves its Domains. `app.close()` closes the Runtime, the Plugins, the HTTP server and the database, in that order. `@jaetask/open-agent-kit/app` runs on Node and imports `/mcp` and `/sqlite`; the Runtime is passed in, so the App does not import pi-durable unless the caller does.

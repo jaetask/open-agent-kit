@@ -3,22 +3,20 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync } from "node:sqlite";
 import { openNodeSqliteStorage } from "@earendil-works/pi-durable/storage/sqlite/node";
 import { table } from "@jaetask/snap";
 import { notesDomain } from "../examples/notes/domain.js";
 import { type Notes, sqliteNotes } from "../examples/notes/notes.js";
+import { type App, createApp } from "../src/app/index.js";
 import {
   type AgentRuntime,
   type Calls,
   type ConversationView,
-  createCalls,
   type Decision,
-  localSource,
   provide,
 } from "../src/index.js";
 import { piRuntime } from "../src/pi/index.js";
-import { sqliteStore } from "../src/sqlite.js";
 import { scriptedModels } from "./pi.js";
 import { describe, scriptPlan } from "./runtime.js";
 
@@ -48,21 +46,25 @@ export async function runDurability(input: string): Promise<string> {
     remove: (owner, id) => stall(notes.remove(owner, id)),
   });
 
+  let app!: App;
   let db!: DatabaseSync;
   let calls!: Calls;
   let runtime!: AgentRuntime;
   const views = new Map<string, ConversationView>();
   const statuses = new Map<string, string[]>();
   const open = async () => {
-    db = new DatabaseSync(join(dir, "app.db"));
-    calls = createCalls({
-      store: sqliteStore(db),
-      now,
-      domains: [provide(notesDomain, (db: DatabaseSync) => ({ notes: scripted(sqliteNotes(db)) }))],
-    });
     const storage = await openNodeSqliteStorage(join(dir, "pi.db"), { prefix: "pi_" });
     runtime = piRuntime({ storage, now, ...scriptedModels(scriptPlan) });
-    await runtime.start([localSource(notesDomain, calls)]);
+    app = await createApp({
+      name: "notes",
+      version: "1",
+      file: join(dir, "app.db"),
+      now,
+      domains: [provide(notesDomain, (db: DatabaseSync) => ({ notes: scripted(sqliteNotes(db)) }))],
+      runtime,
+    });
+    db = app.db;
+    calls = app.calls;
     for (const to of statuses.keys()) watch(to);
   };
   const watch = (to: string) => {
@@ -107,8 +109,7 @@ export async function runDurability(input: string): Promise<string> {
         crash.next = true;
         lines.push(`${n} the next notes write will never finish`);
       } else if ("restart" in step) {
-        await runtime.close();
-        db.close(); // an open write transaction is rolled back
+        await app.close(); // an open write transaction is rolled back
         await open();
         for (const to of statuses.keys()) await settle(to);
         lines.push(`${n} restart`);
@@ -128,7 +129,7 @@ export async function runDurability(input: string): Promise<string> {
     const ids = [...views.values()].flatMap((v) =>
       v.messages.flatMap((m) => (m.from === "call" ? [m.call] : [])),
     );
-    const store = sqliteStore(db);
+    const store = app.store;
     const records = [];
     for (const id of new Set(ids)) {
       const record = await store.get(id);
@@ -147,8 +148,7 @@ export async function runDurability(input: string): Promise<string> {
     );
     return sections.join("\n\n");
   } finally {
-    await runtime.close();
-    db.close();
+    await app.close();
     rmSync(dir, { recursive: true, force: true });
   }
 }

@@ -1,26 +1,20 @@
 // Two Apps on localhost. "tasks" owns the notes Domain and serves it over
 // MCP. "talk" installs it as a Plugin: its agent runs on pi-durable, its own
 // pipeline holds danger Calls where the person is, and tasks runs them.
-import { createServer } from "node:http";
-import type { AddressInfo } from "node:net";
-import { DatabaseSync } from "node:sqlite";
+import type { DatabaseSync } from "node:sqlite";
 import { MemoryStorage } from "@earendil-works/pi-durable";
 import { table } from "@jaetask/snap";
 import { notesDomain } from "../examples/notes/domain.js";
 import { sqliteNotes } from "../examples/notes/notes.js";
+import { createApp } from "../src/app/index.js";
 import {
   type CallStore,
-  cardHtml,
   type ConversationView,
-  createCalls,
+  cardHtml,
   type Decision,
-  memoryStore,
-  pluginSource,
   provide,
 } from "../src/index.js";
-import { mcpServer, nodeListener, remoteSource } from "../src/mcp/index.js";
 import { piRuntime } from "../src/pi/index.js";
-import { sqliteConnections, sqliteStore } from "../src/sqlite.js";
 import { scriptedModels } from "./pi.js";
 import { describe, scriptPlan } from "./runtime.js";
 
@@ -50,34 +44,39 @@ export async function runApps(input: string): Promise<string> {
   const now = () => Date.parse("2026-01-01T00:00:00Z");
 
   // tasks: owns the notes, serves them over MCP.
-  const db = new DatabaseSync(":memory:");
-  const tasksStore = sqliteStore(db);
-  const tasks = createCalls({
-    store: tasksStore,
+  const tasksApp = await createApp({
+    name: "tasks",
+    version: "1",
+    file: ":memory:",
     now,
     domains: [provide(notesDomain, (db: DatabaseSync) => ({ notes: sqliteNotes(db) }))],
   });
-  const connections = sqliteConnections(db);
-  const http = createServer(
-    nodeListener(
-      mcpServer({ domains: [notesDomain], calls: tasks, connections, name: "tasks", version: "1" }),
-    ),
-  );
-  await new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve));
-  const url = `http://127.0.0.1:${(http.address() as AddressInfo).port}/mcp`;
+  const url = `${await tasksApp.listen(0)}/mcp`;
+  const db = tasksApp.db;
+  const tasksStore = tasksApp.store;
 
   // The person pairs talk with tasks and lets talk decide Holds.
-  const pairing = await connections.request("talk", { id: "p1" }, ["read", "write", "danger"]);
-  const token = await connections.approve(pairing.id);
+  const pairing = await tasksApp.connections.request("talk", { id: "p1" }, [
+    "read",
+    "write",
+    "danger",
+  ]);
+  const token = await tasksApp.connections.approve(pairing.id);
   const hosts = new Map([[pairing.id, "talk"]]);
 
   // talk: installs the Plugin; its agent uses it through talk's pipeline.
-  const remote = await remoteSource({ url, token, domain: "notes" });
-  const plugin = { contract: await remote.contract(), source: remote };
-  const talkStore = memoryStore();
-  const talk = createCalls({ store: talkStore, now, domains: [], plugins: [plugin] });
   const runtime = piRuntime({ storage: new MemoryStorage(), now, ...scriptedModels(scriptPlan) });
-  await runtime.start([pluginSource(plugin, talk)]);
+  const talkApp = await createApp({
+    name: "talk",
+    version: "1",
+    file: ":memory:",
+    now,
+    domains: [],
+    plugins: [{ url, token, domain: "notes" }],
+    runtime,
+  });
+  const talk = talkApp.calls;
+  const talkStore = talkApp.store;
 
   const views = new Map<string, ConversationView>();
   const settle = async (to: string) => {
@@ -152,10 +151,7 @@ export async function runApps(input: string): Promise<string> {
     );
     return sections.join("\n\n");
   } finally {
-    await runtime.close();
-    await remote.close();
-    http.closeAllConnections();
-    await new Promise((resolve) => http.close(resolve));
-    db.close();
+    await talkApp.close();
+    await tasksApp.close();
   }
 }
