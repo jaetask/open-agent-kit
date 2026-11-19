@@ -18,9 +18,9 @@
 
 ### Calls in the App
 
-| call | state | transitions |
-| --- | --- | --- |
-| c1 | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
+| call | connection | state | transitions |
+| --- | --- | --- | --- |
+| c1 | full | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
 
 ### Notes
 

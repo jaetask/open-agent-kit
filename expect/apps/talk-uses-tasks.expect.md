@@ -25,21 +25,21 @@ Status: idle.
 
 ### talk: its Calls
 
-| call | state | transitions |
-| --- | --- | --- |
-| t1-r1-c1 | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
-| t1-r1-c2 | succeeded | START → validating · VALID → authorising · ALLOW → gating · HOLD → held · YES → running · DONE → succeeded |
-| t1-r1-c3 | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
-| t1-r1-c4 | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
+| call | connection | state | transitions |
+| --- | --- | --- | --- |
+| t1-r1-c1 |  | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
+| t1-r1-c2 |  | succeeded | START → validating · VALID → authorising · ALLOW → gating · HOLD → held · YES → running · DONE → succeeded |
+| t1-r1-c3 |  | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
+| t1-r1-c4 |  | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
 
 ### tasks: its Calls
 
-| call | state | transitions |
-| --- | --- | --- |
-| t1-r1-c1 | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
-| t1-r1-c2 | succeeded | START → validating · VALID → authorising · ALLOW → gating · HOLD → held · YES → running · DONE → succeeded |
-| t1-r1-c3 | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
-| t1-r1-c4 | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
+| call | connection | state | transitions |
+| --- | --- | --- | --- |
+| t1-r1-c1 | talk | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
+| t1-r1-c2 | talk | succeeded | START → validating · VALID → authorising · ALLOW → gating · HOLD → held · YES → running · DONE → succeeded |
+| t1-r1-c3 | talk | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
+| t1-r1-c4 | talk | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
 
 ### tasks: notes
 

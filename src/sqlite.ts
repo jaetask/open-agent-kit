@@ -14,6 +14,9 @@ export function sqliteStore(db: DatabaseSync): CallStore<DatabaseSync> {
   const upsert = db.prepare(
     "INSERT INTO kit_calls (id, record) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET record = excluded.record",
   );
+  const byConnection = db.prepare(
+    "SELECT record FROM kit_calls WHERE json_extract(record, '$.call.connection') = ? ORDER BY rowid",
+  );
   const put = (record: CallRecord) => {
     upsert.run(record.call.id, JSON.stringify(record));
   };
@@ -23,6 +26,10 @@ export function sqliteStore(db: DatabaseSync): CallStore<DatabaseSync> {
       return row === undefined ? undefined : (JSON.parse(row.record) as CallRecord);
     },
     put: async (record) => put(record),
+    byConnection: async (connection) =>
+      byConnection
+        .all(connection)
+        .map((row) => JSON.parse((row as { record: string }).record) as CallRecord),
     read: (work) => work(db),
     transact: async (work) => {
       db.exec("BEGIN");

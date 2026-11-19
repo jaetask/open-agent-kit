@@ -1,0 +1,56 @@
+{
+  "connections": [
+    {
+      "name": "full",
+      "principal": "p1",
+      "effects": ["read", "write", "danger"],
+      "state": "connected"
+    },
+    {
+      "name": "other",
+      "principal": "p1",
+      "effects": ["read"],
+      "state": "connected"
+    }
+  ],
+  "steps": [
+    {
+      "call": {
+        "as": "full",
+        "tool": "notes__add-note",
+        "arguments": {
+          "text": "milk"
+        },
+        "id": "c1"
+      }
+    },
+    {
+      "call": {
+        "as": "full",
+        "tool": "notes__list-notes",
+        "arguments": {},
+        "id": "c2"
+      }
+    },
+    {
+      "call": {
+        "as": "other",
+        "tool": "notes__list-notes",
+        "arguments": {},
+        "id": "c3"
+      }
+    },
+    {
+      "revoke": "full"
+    },
+    {
+      "post_as": "full"
+    },
+    {
+      "history": "full"
+    },
+    {
+      "history": "other"
+    }
+  ]
+}

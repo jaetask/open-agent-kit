@@ -47,7 +47,7 @@ const notesDomain = defineDomain({
 | `Effect` | `"read" \| "write" \| "danger"` |
 | `Principal` | `{ id }` |
 | `Caller` | `"ui" \| "agent" \| "plugin" \| "cli"` |
-| `Call` | `{ id, action, input, principal, caller }`, where `action` is `domain.action` |
+| `Call` | `{ id, action, input, principal, caller, connection? }`, where `action` is `domain.action` and `connection` is set by the App that owns the Action for a Call that came through a Connection |
 | `Outcome` | `succeeded` with `output`, optional `card` and `changes`; `held` with a `hold`; or `rejected`, `declined`, `expired`, `failed` or `interrupted` with a `reason` |
 | `Reason` | `{ code, message }`; the message is safe to show to a person |
 | `Change` | `{ kind, subject, id }`, where `kind` is `created`, `updated` or `deleted` |
@@ -207,7 +207,7 @@ createServer(nodeListener(serve)).listen(3120);
 
 - Each Action is a tool named `domain__action`, the same name the pi adapter uses. Its input schema is the Contract's; `readOnlyHint` is true for `read` and `destructiveHint` for `danger`.
 - Each Domain's Contract is the resource `open-agent-kit://contract/<domain>`, as JSON.
-- A tool call becomes a Call with the Caller `plugin`. Its id is the `_meta` key `open-agent-kit/call-id`, so a retry returns the stored Outcome; a client that sends none gets a fresh id. Its Principal is the Connection's.
+- A tool call becomes a Call with the Caller `plugin`. Its id is the `_meta` key `open-agent-kit/call-id`, so a retry returns the stored Outcome; a client that sends none gets a fresh id. Its Principal is the Connection's. The Call's `connection` field is the Connection's id, so `store.byConnection(id)` lists every Call a Host made, also after the Connection is revoked.
 - The result's `structuredContent` is the whole Outcome, Card view included; `content` is one line of text. `isError` is true for every state but `succeeded` and `held`.
 
 ### Connections and the Identity seam

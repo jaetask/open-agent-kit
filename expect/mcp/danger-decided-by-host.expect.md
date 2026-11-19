@@ -18,10 +18,10 @@
 
 ### Calls in the App
 
-| call | state | transitions |
-| --- | --- | --- |
-| c1 | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
-| c2 | succeeded | START → validating · VALID → authorising · ALLOW → gating · HOLD → held · YES → running · DONE → succeeded |
+| call | connection | state | transitions |
+| --- | --- | --- | --- |
+| c1 | full | succeeded | START → validating · VALID → authorising · ALLOW → gating · PASS → running · DONE → succeeded |
+| c2 | full | succeeded | START → validating · VALID → authorising · ALLOW → gating · HOLD → held · YES → running · DONE → succeeded |
 
 ### Notes
 

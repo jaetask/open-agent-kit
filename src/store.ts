@@ -23,6 +23,8 @@ export type CallRecord = {
 export interface CallStore<Data = unknown> {
   get(id: CallId): Promise<CallRecord | undefined>;
   put(record: CallRecord): Promise<void>;
+  /** Every Call that came through a Connection, oldest first. */
+  byConnection(connection: string): Promise<CallRecord[]>;
   /** Runs `work` outside a transaction. Used for read Actions. */
   read<T>(work: (data: Data) => Promise<T>): Promise<T>;
   /**
@@ -48,6 +50,10 @@ export function memoryStore(): CallStore<Map<string, unknown>> {
     put: async (record) => {
       records.set(record.call.id, JSON.stringify(record));
     },
+    byConnection: async (connection) =>
+      [...records.values()]
+        .map((json) => JSON.parse(json) as CallRecord)
+        .filter((record) => record.call.connection === connection),
     read: (work) => work(data),
     transact: async (work) => {
       const draft = structuredClone(data);

@@ -29,13 +29,19 @@ type Step =
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
 
-async function records(store: CallStore, ids: string[]) {
+async function records(store: CallStore, ids: string[], hosts: Map<string, string>) {
   const rows = [];
   for (const id of ids) {
     const r = await store.get(id);
-    rows.push([id, r?.state ?? "(none)", r?.history.join(" · ") ?? ""]);
+    const via = r?.call.connection;
+    rows.push([
+      id,
+      via ? (hosts.get(via) ?? via) : "",
+      r?.state ?? "(none)",
+      r?.history.join(" · ") ?? "",
+    ]);
   }
-  return rows.length ? table(["call", "state", "transitions"], rows) : "None.";
+  return rows.length ? table(["call", "connection", "state", "transitions"], rows) : "None.";
 }
 
 export async function runApps(input: string): Promise<string> {
@@ -62,6 +68,7 @@ export async function runApps(input: string): Promise<string> {
   // The person pairs talk with tasks and lets talk decide Holds.
   const pairing = await connections.request("talk", { id: "p1" }, ["read", "write", "danger"]);
   const token = await connections.approve(pairing.id);
+  const hosts = new Map([[pairing.id, "talk"]]);
 
   // talk: installs the Plugin; its agent uses it through talk's pipeline.
   const remote = await remoteSource({ url, token, domain: "notes" });
@@ -114,9 +121,9 @@ export async function runApps(input: string): Promise<string> {
     const notes = sqliteNotes(db).list("p1");
     sections.push(
       "### talk: its Calls",
-      await records(talkStore, unique),
+      await records(talkStore, unique, hosts),
       "### tasks: its Calls",
-      await records(tasksStore, unique),
+      await records(tasksStore, unique, hosts),
       "### tasks: notes",
       notes.length
         ? table(

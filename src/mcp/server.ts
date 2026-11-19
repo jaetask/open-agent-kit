@@ -87,6 +87,7 @@ export function mcpServer(options: McpServeOptions): (request: Request) => Promi
           input,
           principal: connection.principal,
           caller: "plugin",
+          connection: connection.id,
         };
         // Only a Connection with danger in scope reaches here for danger.
         const decision = effect === "danger" && meta[DECISION] === "yes" ? "yes" : undefined;

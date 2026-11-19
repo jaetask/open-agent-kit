@@ -30,7 +30,9 @@ type Step =
         decision?: "yes";
       };
     }
-  | { post_as: string }; // a raw MCP request; the token is a Connection's name, "none" or "wrong"
+  | { post_as: string } // a raw MCP request; the token is a Connection's name, "none" or "wrong"
+  | { revoke: string }
+  | { history: string }; // the Calls that came through a Connection
 
 const json = (value: unknown) => `\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
 
@@ -54,8 +56,12 @@ export async function runMcp(input: string): Promise<string> {
   });
   const connections = sqliteConnections(db);
   const tokens = new Map<string, string>([["wrong", "kit_not-a-token"]]);
+  const ids = new Map<string, string>(); // Connection name → id
+  const hosts = new Map<string, string>(); // Connection id → name
   for (const c of wanted) {
     const made = await connections.request(c.name, { id: c.principal }, c.effects);
+    ids.set(c.name, made.id);
+    hosts.set(made.id, c.name);
     if (c.state === "pairing") {
       tokens.set(c.name, "kit_never-approved");
       continue;
@@ -85,7 +91,7 @@ export async function runMcp(input: string): Promise<string> {
   };
 
   const out: string[] = [];
-  const ids: string[] = [];
+  const callIds: string[] = [];
   try {
     for (const [i, step] of steps.entries()) {
       const n = `${i + 1}.`;
@@ -120,7 +126,7 @@ export async function runMcp(input: string): Promise<string> {
         out.push(`${n} ${step.read.as} reads ${step.read.uri}`, json(JSON.parse(text)));
       } else if ("call" in step) {
         const { as, tool, id, decision } = step.call;
-        if (id && !ids.includes(id)) ids.push(id);
+        if (id && !callIds.includes(id)) callIds.push(id);
         const meta = {
           ...(id ? { [CALL_ID]: id } : {}),
           ...(decision ? { [DECISION]: decision } : {}),
@@ -134,6 +140,20 @@ export async function runMcp(input: string): Promise<string> {
         out.push(
           `${n} ${as} calls ${tool} ${JSON.stringify(step.call.arguments ?? {})}${id ? ` as ${id}` : ""}${decision ? " with the Host's yes" : ""}`,
           `→ ${said(result.structuredContent as unknown as Outcome)} (isError: ${result.isError ?? false}; text: ${JSON.stringify(text)})`,
+        );
+      } else if ("revoke" in step) {
+        await connections.revoke(ids.get(step.revoke) as string);
+        out.push(`${n} the person revokes ${step.revoke}`);
+      } else if ("history" in step) {
+        const done = await store.byConnection(ids.get(step.history) as string);
+        out.push(
+          `${n} the Calls that came through ${step.history}`,
+          done.length
+            ? table(
+                ["call", "action", "state"],
+                done.map((r) => [r.call.id, r.call.action, r.state]),
+              )
+            : "None.",
         );
       } else {
         const response = await fetch(url, {
@@ -154,16 +174,22 @@ export async function runMcp(input: string): Promise<string> {
       }
     }
     const records = [];
-    for (const id of ids) {
+    for (const id of callIds) {
       const record = await store.get(id);
-      records.push([id, record?.state ?? "(none)", record?.history.join(" · ") ?? ""]);
+      const via = record?.call.connection;
+      records.push([
+        id,
+        via ? (hosts.get(via) as string) : "",
+        record?.state ?? "(none)",
+        record?.history.join(" · ") ?? "",
+      ]);
     }
     const notes = sqliteNotes(db).list("p1");
     return [
       "### Steps",
       out.join("\n\n"),
       "### Calls in the App",
-      records.length ? table(["call", "state", "transitions"], records) : "None.",
+      records.length ? table(["call", "connection", "state", "transitions"], records) : "None.",
       "### Notes",
       notes.length
         ? table(

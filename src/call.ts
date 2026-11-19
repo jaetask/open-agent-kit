@@ -17,4 +17,6 @@ export type Call = {
   input: unknown;
   principal: Principal;
   caller: Caller;
+  /** The Connection a Plugin Call came through, set by the App that owns the Action. */
+  connection?: string;
 };

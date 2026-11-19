@@ -14,9 +14,9 @@
 
 ### Calls in the App
 
-| call | state | transitions |
-| --- | --- | --- |
-| c1 | rejected | START → validating · INVALID → rejected |
+| call | connection | state | transitions |
+| --- | --- | --- | --- |
+| c1 | full | rejected | START → validating · INVALID → rejected |
 
 ### Notes
 

@@ -14,9 +14,9 @@
 
 ### Calls in the App
 
-| call | state | transitions |
-| --- | --- | --- |
-| c1 | rejected | START → validating · VALID → authorising · DENY → rejected |
+| call | connection | state | transitions |
+| --- | --- | --- | --- |
+| c1 | guest-host | rejected | START → validating · VALID → authorising · DENY → rejected |
 
 ### Notes
 
