@@ -56,6 +56,10 @@ It runs at http://127.0.0.1:3120 and keeps its data in `data/`. At first start i
 
 With Docker, from the repository root: `docker compose -f examples/notes/compose.yaml up --build`. `examples/notes/compose.pair.yaml` runs two Apps paired together.
 
+## Configure a new App
+
+[Configuring an App](docs/configuring-an-app.md) sets up a new App repository: CI on every branch, pull requests to main that merge themselves when `ci` passes, and no pushes to main.
+
 ## Install
 
 ```
