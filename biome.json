@@ -1,8 +1,17 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
-  "files": { "includes": ["**", "!docs", "!.claude", "!**/*.expect.md"] },
-  "formatter": { "indentStyle": "space", "lineWidth": 100 },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": ["**", "!docs", "!.claude", "!**/*.expect.md"]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "lineWidth": 100
+  },
   "linter": {
     "rules": {
       "style": {
@@ -36,7 +45,18 @@
         "expect/pairing.ts",
         "examples/notes/app.ts"
       ],
-      "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
     }
-  ]
+  ],
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  }
 }

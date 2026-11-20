@@ -39,7 +39,7 @@ Proofs are expect tests: an input file per case with a human-approved `name.expe
 
 ## Run the example
 
-The notes example is a small App: notes, an agent that can use them, and a page. The page is built from [@jaetask/toolkit](https://github.com/jaetask/toolkit), the shell and page kit every Kit app uses: a sidebar with the App's pages, sections with one action each, and edit pages with labelled rows, Back, Cancel and Save.
+The notes example is a small App: notes, an agent that can use them, and a page. The page is built from [@jaetask/toolkit](https://github.com/jaetask/toolkit): the agent-native toolkit's ui parts in the suite's look, and its suite parts for the shell and page kit, with a sidebar of the App's pages, sections with one action each, and edit pages with labelled rows, Back, Cancel and Save.
 
 ![The notes example: the toolkit sidebar, the notes in a section with a Delete on each, and the last result as a Card](docs/img/notes-app.png)
 
@@ -50,7 +50,7 @@ npm install
 npm run example
 ```
 
-`npm run example` builds the page (`examples/notes/page`) into `examples/notes/public` with esbuild, then starts the App. `npm run lint` runs `toolkit-guard` on the page, which fails if it hand-builds a shell, section or edit page, opens a sheet or drawer, or uses a literal colour.
+`npm run example` builds the page (`examples/notes/page`) into `examples/notes/public`, its CSS with Tailwind and its script with esbuild, then starts the App. `npm run lint` runs `toolkit-guard` on the page, which fails if it hand-builds a shell, section or edit page, uses a raw browser control, or uses a literal colour.
 
 It runs at http://127.0.0.1:3120 and keeps its data in `data/`. At first start it prints a setup secret once: enter it on the page to sign in. The agent needs a model: set `KIT_MODEL` to `provider/model` with that provider's API key (as pi-ai reads it, for example `ANTHROPIC_API_KEY`), or point `KIT_OPENAI_BASE_URL` at an OpenAI-compatible server such as a local model server and set `KIT_MODEL=local/<model>`. Without one, the page still works and the chat says what is missing.
 

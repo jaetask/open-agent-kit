@@ -1,5 +1,6 @@
 # Built by examples/notes/build.mjs
 app.js
 app.css
+styles.css
 *.woff
 *.woff2
