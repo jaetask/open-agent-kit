@@ -6,7 +6,7 @@ Every App repository works the same way: agents push branches, a pull request to
 
 - [ ] Create the repository with a README, so main exists.
 - [ ] Clone it over SSH and set the repository's own git identity.
-- [ ] Install the guardrails skill and run `guardrails.py ci`.
+- [ ] Pin the runtime version, then install the guardrails skill and run `guardrails.py ci`.
 - [ ] Turn on the pull request settings.
 - [ ] Turn on the Actions permissions.
 - [ ] Import the ruleset for main.
@@ -29,7 +29,18 @@ git config user.email "<owner's noreply address>"
 
 Check it before the first commit: `git config --show-origin --get user.email` must point at `.git/config`.
 
-## 3. Install the guardrails skill
+## 3. Pin the runtime version
+
+CI installs the version named in the repository, so it tests what runs locally. Commit the version you use:
+
+| Runtime | File | Content |
+| --- | --- | --- |
+| Node | `.nvmrc` | `22.22.0` |
+| Bun | `.bun-version` | `1.3.13` |
+
+Without it, CI takes the newest release, and a test can pass locally and fail in CI.
+
+## 3a. Install the guardrails skill
 
 ```bash
 npx skills add jaetask/skills --skill guardrails
@@ -104,8 +115,8 @@ Then, on the repository's **Actions** and **Pull requests** tabs:
 A repository created without a README has no main. With the ruleset imported, the first push to main is refused, and the pre-push hook refuses it too. Do the first push before importing the ruleset:
 
 1. Leave out step 6 until main exists.
-2. Commit the App's first content, with the workflows from step 3, on main.
-3. As the repository owner, push main once: `git push --no-verify -u origin main`.
+2. Commit the App's first content, with the workflows from step 3a, on main.
+3. As the repository owner, push main once: `git push --no-verify -u origin main`. Agents cannot do this step: the hook refuses main for them, and they do not skip hooks.
 4. Import the ruleset (step 6), then test (step 7).
 
 If the ruleset is already imported, set its **Enforcement status** to **Disabled**, push main as above, then set it back to **Active**.
@@ -114,5 +125,6 @@ If the ruleset is already imported, set its **Enforcement status** to **Disabled
 
 - **Authors and committers.** A rebase merge keeps each commit's author. GitHub's Actions bot becomes the committer of the commits on main.
 - **A red `ci`.** The pull request stays open. Push a fix to the same branch; auto-pr reuses the pull request and the newer push replaces the waiting job.
+- **Reading a red `ci`.** The job log needs a GitHub sign-in. To see the failure without one, run the same steps in Docker with the pinned version, for example `docker run --rm -v "$PWD":/src:ro oven/bun:1.3.13 sh -c 'cp -r /src /app && cd /app && bun install --frozen-lockfile && bun run test'`.
 - **Waiting.** auto-pr waits up to 30 minutes for the merge before it stops watching. The pull request still merges when `ci` passes; only the branch delete is skipped.
 - **Version branches.** A branch that needs a package that is not published yet stays red until it is, then merges like any other.
