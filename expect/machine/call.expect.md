@@ -22,6 +22,7 @@ Initial state: received
 | held | EXPIRE | expired |
 | running | DONE | succeeded |
 | running | THROW | failed |
+| running | REFUSE | rejected |
 | running | CRASH | interrupted |
 | interrupted | RESUME | running |
 | succeeded |  | (final) |

@@ -16,6 +16,7 @@ import {
   type CallRecord,
   type Calls,
   createCalls,
+  Refusal,
   type Decision,
   memoryStore,
   type Outcome,
@@ -35,6 +36,8 @@ type Step =
   | { wait_hours: number };
 
 const START = Date.parse("2026-01-01T00:00:00Z");
+// How much text a stored Call's input keeps, small here so a script can go over it.
+const KEEP = 60;
 
 // Script behaviour around a notes repository: adding the text "fail" writes
 // the note and then throws; after a crash step, the next change is written
@@ -50,6 +53,8 @@ function scripted(notes: Notes, crash: { next: boolean }): Notes {
     add: (owner, text) => {
       const note = notes.add(owner, text);
       if (text === "fail") throw new Error("the disk is full");
+      // Refused after the note was written: the pipeline must put it back.
+      if (text === "refuse") throw new Refusal("not-today", "Not today.");
       return after(note);
     },
     remove: (owner, id) => after(notes.remove(owner, id)),
@@ -71,6 +76,7 @@ function memoryVariant(crash: { next: boolean }): Variant {
       createCalls({
         store,
         now,
+        keepInput: KEEP,
         domains: [
           provide(notesDomain, (data: Map<string, unknown>) => ({
             notes: scripted(mapNotes(data), crash),
@@ -94,6 +100,7 @@ function sqliteVariant(crash: { next: boolean }): Variant {
       createCalls({
         store,
         now,
+        keepInput: KEEP,
         domains: [
           provide(notesDomain, (db: DatabaseSync) => ({ notes: scripted(sqliteNotes(db), crash) })),
         ],
@@ -128,6 +135,7 @@ function remoteVariant(crash: { next: boolean }): Variant {
       const owner = createCalls({
         store: sqliteStore(db),
         now,
+        keepInput: KEEP,
         domains: [
           provide(notesDomain, (db: DatabaseSync) => ({ notes: scripted(sqliteNotes(db), crash) })),
         ],
@@ -197,8 +205,10 @@ async function run(steps: Step[], variant: Variant, crash: { next: boolean }): P
   let calls = await variant.open(now);
   const ids: string[] = [];
   const lines: string[] = [];
+  const sent = new Map<string, string>();
   const seen = (call: Call) => {
     if (!ids.includes(call.id)) ids.push(call.id);
+    if (!sent.has(call.id)) sent.set(call.id, JSON.stringify(call.input));
     return `${call.id} ${call.action} ${JSON.stringify(call.input)} as ${call.principal.id}`;
   };
   for (const [i, step] of steps.entries()) {
@@ -229,12 +239,21 @@ async function run(steps: Step[], variant: Variant, crash: { next: boolean }): P
     const record = await variant.record(id);
     records.push([id, record?.state ?? "(none)", record?.history.join(" · ") ?? ""]);
   }
+  // Stored inputs that differ from what was sent: over-long text is not kept.
+  const trimmedInputs = [];
+  for (const id of ids) {
+    const stored = JSON.stringify((await variant.record(id))?.call.input);
+    if (stored !== undefined && stored !== sent.get(id)) trimmedInputs.push([id, stored]);
+  }
   const notes = await variant.notes();
   return [
     "### Steps",
     lines.join("\n"),
     "### Calls",
     table(["call", "state", "transitions"], records),
+    ...(trimmedInputs.length
+      ? ["### Stored inputs that were trimmed", table(["call", "stored input"], trimmedInputs)]
+      : []),
     "### Notes",
     notes.length
       ? table(

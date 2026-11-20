@@ -15,7 +15,7 @@ test("a Contract is plain JSON", () => {
 test("Action names in a Contract carry their Domain", () => {
   assert.deepEqual(
     contract(notesDomain).actions.map((a) => a.name),
-    ["notes.list-notes", "notes.add-note", "notes.delete-note"],
+    ["notes.list-notes", "notes.add-note", "notes.delete-note", "notes.who-am-i"],
   );
 });
 
@@ -33,7 +33,7 @@ test("run() is a plain function of its input and dependencies", async () => {
   };
   const note = await addNote.run(
     { text: "milk" },
-    { principal: { id: "p1" }, callId: "c1", change: () => {}, notes },
+    { principal: { id: "p1" }, callId: "c1", caller: "ui", change: () => {}, notes },
   );
   assert.deepEqual(note, { id: "n1", owner: "p1", text: "milk" });
 });

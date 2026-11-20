@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { CallId, Principal } from "./call.js";
+import type { Caller, CallId, Principal } from "./call.js";
 import type { Card } from "./card.js";
 import { checkName, checkText, fail } from "./names.js";
 import type { Change } from "./outcome.js";
@@ -11,13 +11,18 @@ export const EFFECTS: readonly Effect[] = ["read", "write", "danger"];
 
 /**
  * What run() receives besides its input: the Principal; the Call id, to pass
- * on as the idempotency key for any effect outside the App's database;
- * `change` to list what a write or danger Action changed; and its Domain's
- * dependencies.
+ * on as the idempotency key for any effect outside the App's database; where
+ * the Call came from (the Caller, and the Connection's id for a Call that
+ * came through one); `change` to list what a write or danger Action
+ * changed; and its Domain's dependencies. To refuse a Call for a reason the
+ * caller can act on, run() throws a Refusal.
  */
 export type RunContext<Deps> = {
   principal: Principal;
   callId: CallId;
+  caller: Caller;
+  /** The id of the Connection the Call came through, if it came through one. */
+  connection?: string;
   change(change: Change): void;
 } & Deps;
 

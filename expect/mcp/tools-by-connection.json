@@ -1,0 +1,66 @@
+{
+  "connections": [
+    {
+      "name": "reader",
+      "principal": "p1",
+      "effects": ["read"],
+      "state": "connected"
+    },
+    {
+      "name": "writer",
+      "principal": "p1",
+      "effects": ["read", "write"],
+      "state": "connected"
+    },
+    {
+      "name": "guest-all",
+      "principal": "guest",
+      "effects": ["read", "write", "danger"],
+      "state": "connected"
+    }
+  ],
+  "steps": [
+    {
+      "list_tools": "reader"
+    },
+    {
+      "list_tools": "writer"
+    },
+    {
+      "list_tools": "guest-all"
+    },
+    {
+      "call": {
+        "as": "reader",
+        "tool": "notes__add-note",
+        "arguments": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "call": {
+        "as": "writer",
+        "tool": "notes__who-am-i"
+      }
+    },
+    {
+      "call": {
+        "as": "writer",
+        "tool": "notes__add-note",
+        "arguments": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "call": {
+        "as": "writer",
+        "tool": "notes__add-note",
+        "arguments": {
+          "text": "milk"
+        }
+      }
+    }
+  ]
+}

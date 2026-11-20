@@ -120,9 +120,12 @@ export function sqliteConnections(db: DatabaseSync, now: () => number = Date.now
   };
   return {
     request,
-    approve: async (id) => {
+    approve: async (id, as) => {
       tidy();
-      move(get(id), "APPROVE");
+      const connection = get(id);
+      if (as?.principal) connection.principal = as.principal;
+      if (as?.effects) connection.effects = as.effects;
+      move(connection, "APPROVE");
       return mint(id);
     },
     pair: async (host, principal, effects) => {

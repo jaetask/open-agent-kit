@@ -31,7 +31,7 @@ const notesDomain = defineDomain({
 ```
 
 - `defineAction` takes seven fields: `name`, `description`, `effect`, `input`, `output`, an optional `card` and `run`. Input and output are zod schemas.
-- `run(input, context)` receives the parsed input and a `RunContext<Deps>`: the Principal, the Call id (`callId`), `change()` and the Domain's dependencies. Annotate the context to declare which dependencies an Action needs. It returns a value or a promise of one.
+- `run(input, context)` receives the parsed input and a `RunContext<Deps>`: the Principal, the Call id (`callId`), where the Call came from (`caller`, and `connection` with the Connection's id for a Call that came through one), `change()` and the Domain's dependencies. To refuse a Call for a reason the caller can act on, `run()` throws `new Refusal(code, message)`; `authorise(principal, action, from)` also receives the Caller and Connection. Annotate the context to declare which dependencies an Action needs. It returns a value or a promise of one.
 - `defineCard` takes a `name`, a whole-number `version` from 1, an `about` line and a `view` (layer 6).
 - `defineDomain` takes a `name`, a semver `version`, an `about` line, its Actions and its Cards.
 - Names are kebab-case. Each define function checks its input, throws an `Error` that names the definition and the problem, and returns a frozen value. The checks are listed in `expect/definitions`.
@@ -102,7 +102,8 @@ Every Call, whatever its Effect, is stored by Call id. `run()` lists what it cha
 
 A `CallStore<Data>` keeps each Call as a `CallRecord` (the Call, its state, its transitions and, once held or ended, its Outcome) next to the App's own data. `Data` is the handle Domains use: the `DatabaseSync` connection for `sqliteStore`, or a `Map` for `memoryStore`.
 
-- A write or danger Action runs inside `store.transact`: its Domain's change and its Outcome commit together, or neither does. If `run()` throws, the change is rolled back and the Call is stored as `failed`.
+- A write or danger Action runs inside `store.transact`: its Domain's change and its Outcome commit together, or neither does. If `run()` throws, the change is rolled back and the Call is stored as `failed`. If it throws a `Refusal`, the change is rolled back and the Call ends as `rejected` with the Refusal's code and message as its Reason (`expect/calls/refused`).
+- Once a Call has ended, text longer than `keepInput` characters (16384 by default) in its stored input is replaced by its length, so an image sent as base64 is kept once, by the Domain, and not again in the Call's record (`expect/calls/long-input`).
 - The guarantee: a write to data in the App's own database happens exactly once per Call id, even if the process stops mid-run. If it stops before the commit, nothing was kept and the next invoke of that id runs it again; after the commit, every invoke returns the stored Outcome.
 - Effects outside that database (an email, an HTTP call, another App) are at-least-once. `run()` receives `context.callId`; pass it on as the idempotency key.
 - A Call is stored as `running` before its transaction starts. The next invoke of that id moves it through `interrupted` and runs it again.
@@ -208,7 +209,7 @@ createServer(nodeListener(serve)).listen(3120);
 
 `mcpServer` returns a fetch-shaped handler (`Request` in, `Response` out) for MCP streamable HTTP; `nodeListener` serves it on Node's `http`. `@jaetask/open-agent-kit/mcp` is the only part of the Kit that imports the MCP SDK (`@modelcontextprotocol/server` and `@modelcontextprotocol/client` 2.4.0, optional peer dependencies). A Biome lint rule fails any import of them elsewhere.
 
-- Each Action is a tool named `domain__action`, the same name the pi adapter uses. Its input schema is the Contract's; `readOnlyHint` is true for `read` and `destructiveHint` for `danger`.
+- Each Action is a tool named `domain__action`, the same name the pi adapter uses. A Connection is listed only the tools it may use: those whose Effect is in its scope and that its Domain's `authorise` allows its Principal (`expect/mcp/tools-by-connection`). Its input schema is the Contract's; `readOnlyHint` is true for `read` and `destructiveHint` for `danger`.
 - Each Domain's Contract is the resource `open-agent-kit://contract/<domain>`, as JSON.
 - A tool call becomes a Call with the Caller `plugin`. Its id is the `_meta` key `open-agent-kit/call-id`, so a retry returns the stored Outcome; a client that sends none gets a fresh id. Its Principal is the Connection's. The Call's `connection` field is the Connection's id, so `store.byConnection(id)` lists every Call a Host made, also after the Connection is revoked.
 - The result's `structuredContent` is the whole Outcome, Card view included; `content` is one line of text. `isError` is true for every state but `succeeded` and `held`.
@@ -221,7 +222,7 @@ interface Identity {
 }
 ```
 
-`sqliteConnections(db)` keeps Connections in the App's database and implements `Identity`. A Host asks with `request(host, principal, effects)`; the Connection waits in `pairing`. When the person approves, the App calls `approve(id)`, which moves it to `connected` and returns its bearer token. The token is shown that once and stored as a SHA-256 hash. `revoke(id)` ends it. `CONNECTION_MACHINE` is the lifecycle: pairing, connected, revoked.
+`sqliteConnections(db)` keeps Connections in the App's database and implements `Identity`. A Host asks with `request(host, principal, effects)`; the Connection waits in `pairing`. When the person approves, the App calls `approve(id)`, which moves it to `connected` and returns its bearer token. `approve(id, { principal, effects })` also sets who the Connection acts as and which Effects it may have, whatever it asked for; the page's `POST /api/connections/:id/approve` takes the same two values in its body (`expect/pairing/approve-as`). The token is shown that once and stored as a SHA-256 hash. `revoke(id)` ends it. `CONNECTION_MACHINE` is the lifecycle: pairing, connected, revoked.
 
 Every request needs the bearer token of a connected Connection; otherwise it is answered with HTTP 401 before any MCP handling. A tool call whose Action has an Effect outside the Connection's Effects is `rejected` with `not-in-scope` before the pipeline runs anything.
 
@@ -325,6 +326,10 @@ await app.listen(3120);
 ### Keeping the store small
 
 Every Call is still stored by its id, and each record notes its Effect and when it ended. The App's sweep (`app.sweep()`, every `sweepEvery`) also forgets the records of succeeded read Calls once they are older than `keepReadsFor`, one day by default. Reads change nothing, so a retry of a forgotten read id simply runs again. Write and danger records, and every record that did not succeed, are kept: they are the App's audit trail. `expect/app/read-retention` shows a read record gone after two days, the write and danger records still there, and the old read id running again.
+
+### Calls the App makes itself
+
+`app.invoke({ action, input, id?, principal? })` makes a Call from the App, with the Caller `app` and the owner as its Principal unless another is given. It goes through the same pipeline: validated, authorised, gated, stored once by its id. `app.onChange(listener)` runs work on an event, and `app.schedule(everyMs, work)` runs it on a schedule, one run at a time, until the App closes or the returned function is called. `expect/app/app-calls` shows a Call made on an event, a retried Call, scheduled Calls and a danger Call that is held like any other.
 
 ### Change events
 

@@ -45,8 +45,12 @@ export type Connection = {
 export interface Connections extends Identity {
   /** A Host asks to connect. The Connection waits in `pairing`. */
   request(host: string, principal: Principal, effects: Effect[]): Promise<Connection>;
-  /** The person approved: the Connection is `connected`; returns its token. */
-  approve(id: string): Promise<string>;
+  /**
+   * The person approved: the Connection is `connected`; returns its token.
+   * With `as`, the person chose who the Connection acts as, which Effects
+   * its Calls may have, or both, whatever it asked for.
+   */
+  approve(id: string, as?: { principal?: Principal; effects?: Effect[] }): Promise<string>;
   revoke(id: string): Promise<void>;
   get(id: string): Promise<Connection | undefined>;
   /** The connected Connection a token belongs to, or null. */

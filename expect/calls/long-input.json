@@ -1,0 +1,40 @@
+{
+  "steps": [
+    {
+      "invoke": {
+        "id": "c1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "short"
+        }
+      }
+    },
+    {
+      "invoke": {
+        "id": "c2",
+        "action": "notes.add-note",
+        "input": {
+          "text": "This note is longer than what a stored Call keeps of its input, so only its length is kept."
+        }
+      }
+    },
+    {
+      "invoke": {
+        "id": "c2",
+        "action": "notes.add-note",
+        "input": {
+          "text": "This note is longer than what a stored Call keeps of its input, so only its length is kept."
+        }
+      }
+    },
+    {
+      "invoke": {
+        "id": "c3",
+        "action": "notes.delete-note",
+        "input": {
+          "id": "n1"
+        }
+      }
+    }
+  ]
+}

@@ -13,6 +13,7 @@
 | CARD_VIEW_SCHEMAS |
 | CONNECTION_MACHINE |
 | EFFECTS |
+| Refusal |
 | agentContext |
 | cardHtml |
 | cardText |

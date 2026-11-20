@@ -20,8 +20,11 @@ _Avoid_: readOnly, destructive, safe
 **Call**: One invocation of an Action, with an id, an input, a Principal and a Caller.
 _Avoid_: request, tool call, invocation
 
-**Caller**: Where a Call came from: ui, agent, plugin or cli. Recorded for audit; never changes what is allowed.
+**Caller**: Where a Call came from: ui, agent, plugin, cli or app. Recorded for audit; a Domain's `authorise` may read it.
 _Avoid_: surface, channel, client
+
+**Refusal**: An Action saying no for a reason the caller can act on, such as "no such note". The Call ends as rejected with the Refusal's code and message, and nothing it changed is kept.
+_Avoid_: error, exception, validation failure
 
 **Principal**: Who a Call acts as. Always present, even in a single-user App.
 _Avoid_: user, account, actor

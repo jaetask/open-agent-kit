@@ -4,7 +4,7 @@ A small kit for building standalone apps that each carry their own agent, and ca
 
 Each app is one deployable with its own data, actions, cards, agent and MCP endpoint. Run one on its own, or connect several so that one app's agent can use another app's actions and show its cards.
 
-> **Status: design stage.** The architecture is written down and the code is being added one layer at a time, each with its proof. Nothing here is ready to use yet.
+> **Status: 0.2.** The seven layers below are built, each with its proof.
 
 **[Read the interactive architecture page](https://jaetask.github.io/open-agent-kit/)** (source: [`docs/index.html`](docs/index.html))
 
@@ -58,11 +58,11 @@ With Docker, from the repository root: `docker compose -f examples/notes/compose
 
 ## Install
 
-Not published yet. It will be:
-
 ```
 npm i @jaetask/open-agent-kit
 ```
+
+The `/mcp` and `/app` entry points also need `@modelcontextprotocol/server` and `@modelcontextprotocol/client` 2.4.0; `/pi` needs `@earendil-works/pi-durable`, `pi-ai` and `chord` 1.5.2.
 
 ## Develop
 

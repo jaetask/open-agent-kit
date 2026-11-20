@@ -1,7 +1,13 @@
 // The example Domain carried through every layer: one read, one write and
 // one danger Action, and the Cards that show their Outcomes.
 import { z } from "zod";
-import { defineAction, defineCard, defineDomain, type RunContext } from "../../src/index.js";
+import {
+  defineAction,
+  defineCard,
+  defineDomain,
+  Refusal,
+  type RunContext,
+} from "../../src/index.js";
 import { Note, type NotesDeps } from "./notes.js";
 
 export const noteList = defineCard({
@@ -55,6 +61,9 @@ export const addNote = defineAction({
   output: Note,
   card: noteCard,
   run: ({ text }, { principal, notes, change }: RunContext<NotesDeps>) => {
+    if (notes.list(principal.id).some((n) => n.text === text)) {
+      throw new Refusal("duplicate", "You already have that note.");
+    }
     const note = notes.add(principal.id, text);
     change({ kind: "created", subject: "note", id: note.id });
     return note;
@@ -75,11 +84,28 @@ export const deleteNote = defineAction({
   },
 });
 
+export const whoAmI = defineAction({
+  name: "who-am-i",
+  description: "Say who this Call acts as and where it came from.",
+  effect: "read",
+  input: z.object({}),
+  output: z.object({
+    principal: z.string(),
+    caller: z.string(),
+    throughConnection: z.boolean(),
+  }),
+  run: (_input, { principal, caller, connection }: RunContext<NotesDeps>) => ({
+    principal: principal.id,
+    caller,
+    throughConnection: connection !== undefined,
+  }),
+});
+
 export const notesDomain = defineDomain({
   name: "notes",
   version: "1.0.0",
   about: "Short notes, one list per Principal.",
-  actions: [listNotes, addNote, deleteNote],
+  actions: [listNotes, addNote, deleteNote, whoAmI],
   cards: [noteList, noteCard, notesChanged],
   // A guest may read; only signed-in Principals may change notes.
   authorise: (principal, action) => principal.id !== "guest" || action.effect === "read",

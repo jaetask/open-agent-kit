@@ -1,0 +1,46 @@
+{
+  "steps": [
+    {
+      "invoke": {
+        "id": "c1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "invoke": {
+        "id": "c2",
+        "action": "notes.add-note",
+        "input": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "invoke": {
+        "id": "c2",
+        "action": "notes.add-note",
+        "input": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "invoke": {
+        "id": "c3",
+        "action": "notes.add-note",
+        "input": {
+          "text": "refuse"
+        }
+      }
+    },
+    {
+      "invoke": {
+        "id": "c4",
+        "action": "notes.list-notes"
+      }
+    }
+  ]
+}

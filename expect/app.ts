@@ -36,12 +36,19 @@ type Step =
   | { restart: true }
   | { wait_days: number }
   | { sweep: true } // the App's sweep runs once
+  | { app: { id: string; action: string; input: unknown } } // a Call the App makes itself
+  | { schedule_runs: number } // scheduled work runs this many times, then is stopped
   | { record: string }; // what the App's store holds for a Call id
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
 
 export async function runApp(input: string): Promise<string> {
-  const { steps, model } = JSON.parse(input) as { steps: Step[]; model?: "none" };
+  const { steps, model, echo } = JSON.parse(input) as {
+    steps: Step[];
+    model?: "none";
+    /** The App answers every note someone else adds with a note of its own. */
+    echo?: boolean;
+  };
   const dir = mkdtempSync(join(tmpdir(), "kit-app-"));
   let clock = Date.parse("2026-01-01T00:00:00Z");
   const now = () => clock;
@@ -112,6 +119,20 @@ export async function runApp(input: string): Promise<string> {
         ...(model === "none" ? await modelsFromEnv({}) : scriptedModels(scriptPlan)),
       }),
     });
+    if (echo) {
+      // On an event: the App answers a note that it did not add itself.
+      app.onChange(({ call, changes }) => {
+        if (call.caller === "app") return;
+        for (const change of changes) {
+          if (change.kind !== "created" || change.subject !== "note") continue;
+          void app.invoke({
+            id: `echo-${change.id}`,
+            action: "notes.add-note",
+            input: { text: `seen ${change.id}` },
+          });
+        }
+      });
+    }
     url = await app.listen(0);
     for (const to of views.keys()) app.runtime?.watch(to, (v) => views.set(to, v));
     await listen();
@@ -220,6 +241,33 @@ export async function runApp(input: string): Promise<string> {
         });
         const outcome = (await response.json()) as { state: string };
         lines.push(`${n} the page decides ${call} ${decision} → ${outcome.state}`);
+      } else if ("app" in step) {
+        const { id, action } = step.app;
+        const outcome = await app.invoke({
+          id,
+          action: action as `${string}.${string}`,
+          input: step.app.input,
+        });
+        lines.push(`${n} the App calls ${action} as ${id} → ${outcome.state}`);
+      } else if ("schedule_runs" in step) {
+        let runs = 0;
+        const wanted = step.schedule_runs;
+        await new Promise<void>((resolve) => {
+          const stop = app.schedule(5, async () => {
+            if (runs >= wanted) return;
+            runs += 1;
+            await app.invoke({
+              id: `tick-${runs}`,
+              action: "notes.add-note",
+              input: { text: `tick ${runs}` },
+            });
+            if (runs === wanted) {
+              stop();
+              resolve();
+            }
+          });
+        });
+        lines.push(`${n} scheduled work ran ${runs} times, each adding a note, and was stopped`);
       } else if ("sweep" in step) {
         const { expired, forgotten } = await app.sweep();
         lines.push(
