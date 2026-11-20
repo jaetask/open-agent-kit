@@ -1,6 +1,6 @@
 {
   "name": "@jaetask/open-agent-kit",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A small kit for standalone apps that each carry their own agent and join together over MCP.",
   "keywords": [
     "agent",
