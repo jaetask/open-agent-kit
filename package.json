@@ -75,7 +75,7 @@
     "@earendil-works/pi-durable": "1.5.2",
     "@fontsource-variable/inter": "^5.2.8",
     "@jaetask/snap": "0.1.0",
-    "@jaetask/toolkit": "github:jaetask/toolkit",
+    "@jaetask/toolkit": "0.1.0",
     "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/server": "2.4.0",
     "@types/node": "22.18.0",
