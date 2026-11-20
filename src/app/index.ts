@@ -11,7 +11,8 @@ import { remoteSource, type RemoteOptions } from "../mcp/client.js";
 import { nodeListener } from "../mcp/node.js";
 import { mcpServer } from "../mcp/server.js";
 import { EFFECTS, type Effect } from "../action.js";
-import type { Principal } from "../call.js";
+import { randomUUID } from "node:crypto";
+import type { ActionName, Principal } from "../call.js";
 import type { Outcome } from "../outcome.js";
 import type { AgentRuntime } from "../runtime.js";
 import { sqliteConnections, sqliteStore } from "../sqlite.js";
@@ -80,6 +81,22 @@ export type App = {
   sweep(): Promise<{ expired: number; forgotten: number }>;
   /** Claims pairing tokens, installs approved Plugins and checks their Contract versions. */
   syncPlugins(): Promise<void>;
+  /**
+   * Makes a Call from the App itself, as its owner unless a Principal is
+   * given: for work the App does on an event or a schedule. The Caller is
+   * "app". Give an id to make a retry return the stored Outcome.
+   */
+  invoke(call: {
+    action: ActionName;
+    input?: unknown;
+    id?: string;
+    principal?: Principal;
+  }): Promise<Outcome>;
+  /**
+   * Runs `work` every `everyMs` milliseconds until the App closes, one run
+   * at a time. Returns a function that stops it.
+   */
+  schedule(everyMs: number, work: () => unknown): () => void;
   /** Calls `listener` with every ChangeEvent; returns a function that stops it. */
   onChange(listener: (event: ChangeEvent) => void): () => void;
   /**
@@ -254,8 +271,39 @@ export async function createApp(options: AppOptions): Promise<App> {
   const syncer = syncEvery > 0 ? setInterval(() => void host.sync(), syncEvery) : undefined;
   syncer?.unref();
 
+  // Work the App does on a schedule: each timer, so that close() can stop them.
+  const timers = new Set<NodeJS.Timeout>();
+  const schedule = (everyMs: number, work: () => unknown) => {
+    let busy = false;
+    const timer = setInterval(() => {
+      if (busy) return;
+      busy = true;
+      void Promise.resolve()
+        .then(work)
+        .catch((error: Error) => log(`Scheduled work failed: ${error.message}`))
+        .finally(() => {
+          busy = false;
+        });
+    }, everyMs);
+    timer.unref();
+    timers.add(timer);
+    return () => {
+      clearInterval(timer);
+      timers.delete(timer);
+    };
+  };
+
   let http: Server | undefined;
   return {
+    invoke: (call) =>
+      calls.invoke({
+        id: call.id ?? randomUUID(),
+        action: call.action,
+        input: call.input ?? {},
+        principal: call.principal ?? owner,
+        caller: "app",
+      }),
+    schedule,
     sweepHolds,
     sweep,
     syncPlugins: () => host.sync(),
@@ -278,6 +326,7 @@ export async function createApp(options: AppOptions): Promise<App> {
     close: async () => {
       clearInterval(sweeper);
       clearInterval(syncer);
+      for (const timer of timers) clearInterval(timer);
       for (const stop of [...streams]) stop();
       await options.runtime?.close();
       for (const source of remotes) await source.close();

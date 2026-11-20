@@ -2,6 +2,7 @@
 // session check needs the session cookie; every write also needs the
 // X-Kit-Request header and, when the browser sends one, a same-origin Origin.
 import { randomUUID } from "node:crypto";
+import { EFFECTS, type Effect } from "../action.js";
 import type { ActionName, Principal } from "../call.js";
 import type { Calls } from "../calls.js";
 import { cardHtml } from "../card-html.js";
@@ -120,8 +121,23 @@ export function uiRoutes(options: UiOptions) {
       const id = decodeURIComponent(parts[2]);
       if (!(await connections.get(id))) return json({ error: "No such Connection." }, 404);
       try {
-        if (parts[3] === "approve") await connections.approve(id);
-        else if (parts[3] === "revoke") await connections.revoke(id);
+        if (parts[3] === "approve") {
+          // The person may choose who the Connection acts as and what it may do.
+          const body = (await request.json().catch(() => ({}))) as {
+            principal?: unknown;
+            effects?: unknown;
+          };
+          const effects = Array.isArray(body.effects) ? body.effects : undefined;
+          if (effects && !effects.every((e) => EFFECTS.includes(e as Effect))) {
+            return json({ error: "effects is a list of read, write and danger" }, 400);
+          }
+          await connections.approve(id, {
+            ...(typeof body.principal === "string" && body.principal
+              ? { principal: { id: body.principal } }
+              : {}),
+            ...(effects ? { effects: effects as Effect[] } : {}),
+          });
+        } else if (parts[3] === "revoke") await connections.revoke(id);
         else return json({ error: "Not found." }, 404);
       } catch (error) {
         return json({ error: (error as Error).message }, 409);

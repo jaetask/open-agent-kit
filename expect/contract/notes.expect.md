@@ -19,6 +19,7 @@
 | notes.list-notes | read | note-list | List your notes. |
 | notes.add-note | write | note | Add a note. |
 | notes.delete-note | danger | notes-changed | Delete a note. It cannot be brought back. |
+| notes.who-am-i | read |  | Say who this Call acts as and where it came from. |
 
 ### Cards
 
@@ -83,6 +84,7 @@ Tools:
 - notes__list-notes (reads): List your notes.
 - notes__add-note (changes): Add a note.
 - notes__delete-note (changes, after the person says yes): Delete a note. It cannot be brought back.
+- notes__who-am-i (reads): Say who this Call acts as and where it came from.
 A tool that changes something after the person says yes waits for them; tell them what you asked for.
 ```
 
@@ -207,6 +209,44 @@ Output:
   },
   "required": [
     "deleted"
+  ],
+  "additionalProperties": false
+}
+```
+
+#### notes.who-am-i
+
+Input:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {}
+}
+```
+
+Output:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "principal": {
+      "type": "string"
+    },
+    "caller": {
+      "type": "string"
+    },
+    "throughConnection": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "principal",
+    "caller",
+    "throughConnection"
   ],
   "additionalProperties": false
 }

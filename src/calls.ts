@@ -5,7 +5,14 @@ import { cardView } from "./card.js";
 import type { Contract } from "./contract.js";
 import type { Domain } from "./domain.js";
 import { isFinal, next } from "./machine.js";
-import type { Change, Decision, Json, Outcome, Reason } from "./outcome.js";
+import {
+  type Change,
+  type Decision,
+  type Json,
+  type Outcome,
+  type Reason,
+  Refusal,
+} from "./outcome.js";
 import type { ActionSource } from "./runtime.js";
 import type { CallRecord, CallStore } from "./store.js";
 
@@ -53,6 +60,12 @@ export type CallsOptions<Data> = {
   store: CallStore<Data>;
   /** How long a Hold waits for a Decision, in milliseconds. Defaults to one day. */
   holdFor?: number;
+  /**
+   * The longest text, in characters, kept in a stored Call's input once the
+   * Call has ended. A longer one, such as an image as base64, is replaced by
+   * its length. Defaults to 16384; 0 keeps everything.
+   */
+  keepInput?: number;
   /** The clock. Defaults to Date.now. */
   now?: () => number;
   /**
@@ -72,7 +85,7 @@ const reason = (code: string, message: string): Reason => ({ code, message });
 class WrongOutput extends Error {}
 
 export function createCalls<Data>(options: CallsOptions<Data>): Calls {
-  const { store, holdFor = DAY, now = Date.now } = options;
+  const { store, holdFor = DAY, now = Date.now, keepInput = 16_384 } = options;
   type Local = { action: AnyAction; domain: Domain<object>; deps: (data: Data) => object };
   type Remote = { effect: Effect; source: ActionSource };
   const actions = new Map<string, Local>();
@@ -123,10 +136,26 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     record.history.push(`${event} → ${record.state}`);
   };
 
+  // A copy of `value` with every over-long text replaced by its length.
+  const trimmed = (value: unknown): unknown => {
+    if (typeof value === "string") {
+      return value.length > keepInput ? { omitted: "text", characters: value.length } : value;
+    }
+    if (Array.isArray(value)) return value.map(trimmed);
+    if (value !== null && typeof value === "object") {
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, trimmed(v)]));
+    }
+    return value;
+  };
+
   const ended = (record: CallRecord, event: CallEvent, outcome: Outcome) => {
     move(record, event);
     record.outcome = outcome;
-    if (outcome.state !== "held") record.endedAt = new Date(now()).toISOString();
+    if (outcome.state !== "held") {
+      record.endedAt = new Date(now()).toISOString();
+      // The Call is over: its record no longer needs large input to run again.
+      if (keepInput > 0) record.call = { ...record.call, input: trimmed(record.call.input) };
+    }
     return outcome;
   };
 
@@ -152,6 +181,8 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
       ...deps(data),
       principal: record.call.principal,
       callId: record.call.id,
+      caller: record.call.caller,
+      ...(record.call.connection ? { connection: record.call.connection } : {}),
       change,
     });
     const checked = action.output.safeParse(output);
@@ -167,14 +198,18 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     return done;
   };
 
+  // run() threw: a Refusal ends the Call as rejected with its own Reason;
+  // anything else ends it as failed.
   const failed = (record: CallRecord, error: unknown): Outcome =>
-    ended(record, "THROW", {
-      state: "failed",
-      reason:
-        error instanceof WrongOutput
-          ? reason("invalid-output", `${record.call.action} returned the wrong shape`)
-          : reason("run-failed", `${record.call.action} failed`),
-    });
+    error instanceof Refusal
+      ? ended(record, "REFUSE", { state: "rejected", reason: reason(error.code, error.message) })
+      : ended(record, "THROW", {
+          state: "failed",
+          reason:
+            error instanceof WrongOutput
+              ? reason("invalid-output", `${record.call.action} returned the wrong shape`)
+              : reason("run-failed", `${record.call.action} failed`),
+        });
 
   // A Plugin's Call runs in the App that owns it. This App stores the Outcome.
   const executeRemote = async (record: CallRecord, { effect, source }: Remote) => {
@@ -307,7 +342,11 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
       });
     }
     move(record, "VALID");
-    if (!domain.authorise(call.principal, action)) {
+    const from = {
+      caller: call.caller,
+      ...(call.connection ? { connection: call.connection } : {}),
+    };
+    if (!domain.authorise(call.principal, action, from)) {
       return end(record, "DENY", {
         state: "rejected",
         reason: reason("not-allowed", `${call.principal.id} may not run ${call.action}`),

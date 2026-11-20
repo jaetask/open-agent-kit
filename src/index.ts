@@ -31,13 +31,14 @@ export type {
 export { CONNECTION_MACHINE } from "./connection.js";
 export type { Contract, ContractAction, ContractCard, JsonSchema } from "./contract.js";
 export { contract } from "./contract.js";
-export type { Domain } from "./domain.js";
+export type { CallFrom, Domain } from "./domain.js";
 export { defineDomain } from "./domain.js";
 export type { Plan } from "./fake-runtime.js";
 export { fakeRuntime } from "./fake-runtime.js";
 export { localSource, pluginSource } from "./local-source.js";
 export type { MachineDefinition } from "./machine.js";
 export type { Change, Decision, Hold, Json, Outcome, Reason } from "./outcome.js";
+export { Refusal } from "./outcome.js";
 export type {
   ActionSource,
   AgentRuntime,

@@ -1,6 +1,6 @@
 {
   "name": "@jaetask/open-agent-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A small kit for standalone apps that each carry their own agent and join together over MCP.",
   "keywords": [
     "agent",
@@ -55,7 +55,7 @@
     "node": ">=22.13"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit && tsc -p examples/notes/page",
     "test": "tsx --test src/*.test.ts",
     "expect": "tsx expect/snap.ts",
@@ -66,7 +66,9 @@
     "check:docs": "node scripts/check-docs.mjs",
     "example": "node examples/notes/build.mjs && tsx examples/notes/app.ts",
     "example:build": "node examples/notes/build.mjs",
-    "example:guard": "toolkit-guard examples/notes/page"
+    "example:guard": "toolkit-guard examples/notes/page",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "prepublishOnly": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run expect && npm run build"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.5",

@@ -2,7 +2,7 @@
 export type Principal = { id: string };
 
 /** Where a Call came from. Recorded for audit; never changes what is allowed. */
-export type Caller = "ui" | "agent" | "plugin" | "cli";
+export type Caller = "ui" | "agent" | "plugin" | "cli" | "app";
 
 /** Chosen by the Caller. Invoking the same id twice returns the stored Outcome. */
 export type CallId = string;

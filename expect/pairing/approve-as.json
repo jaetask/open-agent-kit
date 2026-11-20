@@ -1,0 +1,30 @@
+{
+  "steps": [
+    { "tasks_version": "1.0.0" },
+    { "pair": "coding agent" },
+    { "pair": "dashboard" },
+    {
+      "tasks_page": {
+        "method": "POST",
+        "path": "/api/connections/<connection 1>/approve",
+        "body": { "principal": "coder", "effects": ["read", "write"] }
+      }
+    },
+    {
+      "tasks_page": {
+        "method": "POST",
+        "path": "/api/connections/<connection 2>/approve",
+        "body": { "effects": ["read"] }
+      }
+    },
+    {
+      "tasks_page": {
+        "method": "POST",
+        "path": "/api/connections/<connection 2>/approve",
+        "body": { "effects": ["everything"] }
+      }
+    },
+    { "tasks_page": { "method": "GET", "path": "/api/connections" } },
+    { "claim": { "pair": 1 } }
+  ]
+}

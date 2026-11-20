@@ -15,6 +15,7 @@
 | notes__list-notes | true | false | List your notes. |
 | notes__add-note | false | false | Add a note. |
 | notes__delete-note | false | true | Delete a note. It cannot be brought back. |
+| notes__who-am-i | true | false | Say who this Call acts as and where it came from. |
 
 2. full lists the resources
 
@@ -136,6 +137,37 @@
         "additionalProperties": false
       },
       "card": "notes-changed"
+    },
+    {
+      "name": "notes.who-am-i",
+      "description": "Say who this Call acts as and where it came from.",
+      "effect": "read",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {}
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "principal": {
+            "type": "string"
+          },
+          "caller": {
+            "type": "string"
+          },
+          "throughConnection": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "principal",
+          "caller",
+          "throughConnection"
+        ],
+        "additionalProperties": false
+      }
     }
   ],
   "cards": [

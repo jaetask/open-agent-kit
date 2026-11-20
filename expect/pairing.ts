@@ -17,7 +17,7 @@ import { describe, scriptPlan } from "./runtime.js";
 type Step =
   | { tasks_version: string } // (re)start tasks with this Domain version
   | { talk: true } // start talk, which asks tasks to pair
-  | { tasks_page: { method: string; path: string } }
+  | { tasks_page: { method: string; path: string; body?: unknown } }
   | { talk_page: { method: string; path: string } }
   | { sync: true } // talk claims, installs and checks versions
   | { chat: string }
@@ -49,10 +49,15 @@ export async function runPairing(input: string): Promise<string> {
     });
     cookies.set(app, (response.headers.get("set-cookie") ?? "").split(";")[0] as string);
   };
-  const page = async (app: App, url: string, method: string, path: string) => {
+  const page = async (app: App, url: string, method: string, path: string, body?: unknown) => {
     const response = await fetch(`${url}${path}`, {
       method,
-      headers: { cookie: cookies.get(app) ?? "", "x-kit-request": "1" },
+      headers: {
+        cookie: cookies.get(app) ?? "",
+        "x-kit-request": "1",
+        "content-type": "application/json",
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     return response.json();
   };
@@ -121,8 +126,15 @@ export async function runPairing(input: string): Promise<string> {
         lines.push(`${n} talk starts with connect = tasks/mcp`);
       } else if ("tasks_page" in step) {
         const { method, path } = step.tasks_page;
-        const body = await page(tasks as App, tasksUrl, method, realPath(path));
-        lines.push(`${n} tasks' page: ${method} ${path} → ${clean(body)}`);
+        const body = await page(
+          tasks as App,
+          tasksUrl,
+          method,
+          realPath(path),
+          step.tasks_page.body,
+        );
+        const sent = step.tasks_page.body ? ` ${JSON.stringify(step.tasks_page.body)}` : "";
+        lines.push(`${n} tasks' page: ${method} ${path}${sent} → ${clean(body)}`);
       } else if ("talk_page" in step) {
         const { method, path } = step.talk_page;
         const body = await page(talk as App, talkUrl, method, realPath(path));

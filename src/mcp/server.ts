@@ -44,6 +44,22 @@ const unauthorised = () =>
  */
 export function mcpServer(options: McpServeOptions): (request: Request) => Promise<Response> {
   const contracts = options.domains.map((d) => contractOf(d));
+  // Whether a Connection may use an Action: its Effect is in the Connection's
+  // scope, and the Action's Domain allows the Connection's Principal.
+  const allowed = (connection: Connection, name: string) => {
+    for (const domain of options.domains) {
+      const action = domain.actions.find((a) => `${domain.name}.${a.name}` === name);
+      if (!action) continue;
+      return (
+        connection.effects.includes(action.effect) &&
+        domain.authorise(connection.principal, action, {
+          caller: "plugin",
+          connection: connection.id,
+        })
+      );
+    }
+    return false;
+  };
   const effects = new Map(contracts.flatMap((c) => c.actions.map((a) => [a.name, a.effect])));
 
   const build = (connection: Connection) => {
@@ -53,18 +69,20 @@ export function mcpServer(options: McpServeOptions): (request: Request) => Promi
     );
     server.setRequestHandler("tools/list", async () => ({
       tools: contracts.flatMap((c) =>
-        c.actions.map((a) => {
-          const { $schema: _, ...inputSchema } = a.input;
-          return {
-            name: toolName(a.name),
-            description: a.description,
-            inputSchema: inputSchema as { type: "object" },
-            annotations: {
-              readOnlyHint: a.effect === "read",
-              destructiveHint: a.effect === "danger",
-            },
-          };
-        }),
+        c.actions
+          .filter((a) => allowed(connection, a.name))
+          .map((a) => {
+            const { $schema: _, ...inputSchema } = a.input;
+            return {
+              name: toolName(a.name),
+              description: a.description,
+              inputSchema: inputSchema as { type: "object" },
+              annotations: {
+                readOnlyHint: a.effect === "read",
+                destructiveHint: a.effect === "danger",
+              },
+            };
+          }),
       ),
     }));
     server.setRequestHandler("tools/call", async (request) => {

@@ -1,0 +1,60 @@
+{
+  "echo": true,
+  "steps": [
+    {
+      "sign_in": "expect-setup-secret"
+    },
+    {
+      "ui": {
+        "id": "u1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "milk"
+        }
+      }
+    },
+    {
+      "app": {
+        "id": "a1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "from the App"
+        }
+      }
+    },
+    {
+      "app": {
+        "id": "a1",
+        "action": "notes.add-note",
+        "input": {
+          "text": "from the App"
+        }
+      }
+    },
+    {
+      "app": {
+        "id": "a2",
+        "action": "notes.who-am-i",
+        "input": {}
+      }
+    },
+    {
+      "schedule_runs": 2
+    },
+    {
+      "record": "a1"
+    },
+    {
+      "app": {
+        "id": "a3",
+        "action": "notes.delete-note",
+        "input": {
+          "id": "n1"
+        }
+      }
+    },
+    {
+      "holds": true
+    }
+  ]
+}

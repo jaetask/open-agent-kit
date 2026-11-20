@@ -27,6 +27,7 @@ export type CallEvent =
   | "EXPIRE"
   | "DONE"
   | "THROW"
+  | "REFUSE"
   | "CRASH"
   | "RESUME";
 
@@ -39,7 +40,7 @@ export const CALL_MACHINE: MachineDefinition<CallState, CallEvent> = {
     authorising: { ALLOW: "gating", DENY: "rejected" },
     gating: { PASS: "running", HOLD: "held" },
     held: { YES: "running", NO: "declined", EXPIRE: "expired" },
-    running: { DONE: "succeeded", THROW: "failed", CRASH: "interrupted" },
+    running: { DONE: "succeeded", THROW: "failed", REFUSE: "rejected", CRASH: "interrupted" },
     interrupted: { RESUME: "running" },
     succeeded: {},
     rejected: {},
