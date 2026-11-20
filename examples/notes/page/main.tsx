@@ -2,26 +2,24 @@
 // Pages are routed on the hash (#/notes, #/notes/new, #/waiting, #/chat, #/settings). Every request
 // carries the X-Kit-Request header; Cards arrive as escaped HTML made by the App's cardHtml.
 import "@fontsource-variable/inter";
-import "@jaetask/toolkit/styles.css";
-import "./page.css";
 import {
   AppShell,
-  Button,
   EditFrame,
-  EmptyCard,
   type LinkComponent,
+  LinkProvider,
   ListCard,
   ListRow,
   PageBody,
   Panel,
   PrimaryLink,
   Row,
-  Textarea,
-  ToolkitProvider,
   useBackTo,
-  Input,
-  Card,
-} from "@jaetask/toolkit";
+} from "@jaetask/toolkit/suite";
+import { Button } from "@jaetask/toolkit/ui/button";
+import { Card, CardContent } from "@jaetask/toolkit/ui/card";
+import { Empty, EmptyDescription } from "@jaetask/toolkit/ui/empty";
+import { Input } from "@jaetask/toolkit/ui/input";
+import { Textarea } from "@jaetask/toolkit/ui/textarea";
 import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -150,7 +148,7 @@ function NotesPage({
               <ListRow
                 key={n.id}
                 aside={
-                  <Button surface="white" onClick={() => onDelete(n.id)}>
+                  <Button variant="secondary" onClick={() => onDelete(n.id)}>
                     Delete
                   </Button>
                 }
@@ -161,14 +159,18 @@ function NotesPage({
             ))}
           </ListCard>
         ) : (
-          <EmptyCard
-            text="No notes yet. Add one, or ask the agent to."
-            action={<PrimaryLink to="/notes/new">Add note</PrimaryLink>}
-          />
+          <Empty>
+            <EmptyDescription>No notes yet. Add one, or ask the agent to.</EmptyDescription>
+            <PrimaryLink to="/notes/new">Add note</PrimaryLink>
+          </Empty>
         )}
       </Panel>
       <Panel id="last" title="Last result" line="What your last action did.">
-        <Card>{last ? <Result outcome={last} /> : <p className="tk-muted">Nothing yet.</p>}</Card>
+        <Card>
+          <CardContent className="pt-6">
+            {last ? <Result outcome={last} /> : <p className="tk-muted">Nothing yet.</p>}
+          </CardContent>
+        </Card>
       </Panel>
     </PageBody>
   );
@@ -219,7 +221,9 @@ function WaitingPage({ holds, onDecide }: { holds: Hold[]; onDecide: Decide }) {
             ))}
           </ListCard>
         ) : (
-          <EmptyCard text="Nothing is waiting." />
+          <Empty>
+            <EmptyDescription>Nothing is waiting.</EmptyDescription>
+          </Empty>
         )}
       </Panel>
     </PageBody>
@@ -230,10 +234,8 @@ type Decide = (id: string, decision: "yes" | "no") => void;
 function YesNo({ id, onDecide }: { id: string; onDecide: Decide }) {
   return (
     <>
-      <Button variant="primary" onClick={() => onDecide(id, "yes")}>
-        Yes
-      </Button>
-      <Button surface="white" onClick={() => onDecide(id, "no")}>
+      <Button onClick={() => onDecide(id, "yes")}>Yes</Button>
+      <Button variant="secondary" onClick={() => onDecide(id, "no")}>
         No
       </Button>
     </>
@@ -285,7 +287,11 @@ function ChatPage({ view, onDecide }: { view: View; onDecide: Decide }) {
             <li ref={end} aria-hidden />
           </ol>
         ) : (
-          <EmptyCard text="No messages yet. Ask for something, such as: add milk to my notes." />
+          <Empty>
+            <EmptyDescription>
+              No messages yet. Ask for something, such as: add milk to my notes.
+            </EmptyDescription>
+          </Empty>
         )}
         <form className="composer" onSubmit={send}>
           <Input
@@ -295,9 +301,7 @@ function ChatPage({ view, onDecide }: { view: View; onDecide: Decide }) {
             placeholder="Add milk to my notes"
             onChange={(e) => setText(e.target.value)}
           />
-          <Button type="submit" variant="primary">
-            Send
-          </Button>
+          <Button type="submit">Send</Button>
         </form>
       </Panel>
     </PageBody>
@@ -311,10 +315,16 @@ function SettingsPage({ onSignOut }: { onSignOut: () => void }) {
         id="session"
         title="Session"
         line="You are signed in with the setup secret."
-        action={<Button onClick={onSignOut}>Sign out</Button>}
+        action={
+          <Button variant="secondary" onClick={onSignOut}>
+            Sign out
+          </Button>
+        }
       >
         <Card>
-          <p className="tk-muted">Signing out ends the session in this browser only.</p>
+          <CardContent className="pt-6">
+            <p className="tk-muted">Signing out ends the session in this browser only.</p>
+          </CardContent>
         </Card>
       </Panel>
     </PageBody>
@@ -351,9 +361,7 @@ function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
             onChange={(e) => setSecret(e.target.value)}
             required
           />
-          <Button type="submit" variant="primary">
-            Sign in
-          </Button>
+          <Button type="submit">Sign in</Button>
         </form>
         {error && (
           <p className="error" role="alert">
@@ -448,9 +456,9 @@ function App() {
 function Root() {
   const path = useHashPath();
   return (
-    <ToolkitProvider link={HashLink} location={path}>
+    <LinkProvider link={HashLink} location={path}>
       <App />
-    </ToolkitProvider>
+    </LinkProvider>
   );
 }
 
