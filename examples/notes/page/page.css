@@ -1,0 +1,97 @@
+/* The notes page's own styles: the conversation and Cards. Everything else comes from the toolkit. */
+body {
+  margin: 0;
+  background: var(--tk-page);
+}
+.sign-in {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 16px;
+}
+.sign-in > .tk-panel {
+  width: min(100%, 30rem);
+}
+.composer {
+  display: flex;
+  gap: 8px;
+}
+.error {
+  margin: 0;
+  color: var(--tk-danger);
+}
+.messages {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 60dvh;
+  overflow-y: auto;
+}
+.msg {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: var(--tk-radius-card);
+  background: var(--tk-card);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.msg.person {
+  justify-self: end;
+  background: var(--tk-primary);
+  color: var(--tk-on-primary);
+}
+.msg.call {
+  display: grid;
+  gap: 6px;
+  max-width: 100%;
+  border: 1px solid var(--tk-line);
+  white-space: normal;
+}
+.msg-actions {
+  display: flex;
+  gap: 8px;
+}
+/* Cards, from cardHtml */
+.kit-card-title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.kit-card table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.kit-card th,
+.kit-card td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--tk-line);
+  text-align: left;
+}
+.kit-card th {
+  color: var(--tk-muted);
+  font-weight: 500;
+}
+.kit-card dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 0;
+}
+.kit-card dt {
+  color: var(--tk-muted);
+}
+.kit-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.kit-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.kit-card pre {
+  margin: 0;
+  font: inherit;
+  white-space: pre-wrap;
+}

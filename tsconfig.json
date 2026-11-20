@@ -15,5 +15,6 @@
     "sourceMap": true,
     "outDir": "dist"
   },
-  "include": ["src", "expect", "examples"]
+  "include": ["src", "expect", "examples"],
+  "exclude": ["examples/notes/page"]
 }

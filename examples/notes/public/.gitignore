@@ -1,0 +1,5 @@
+# Built by examples/notes/build.mjs
+app.js
+app.css
+*.woff
+*.woff2

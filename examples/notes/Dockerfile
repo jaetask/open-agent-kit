@@ -3,11 +3,14 @@
 #   docker build -f examples/notes/Dockerfile -t open-agent-kit-notes .
 FROM node:22.22-slim
 WORKDIR /app
+# git fetches @jaetask/toolkit until it is on npm.
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --chown=node:node package.json package-lock.json ./
-RUN npm ci --ignore-scripts && npm cache clean --force
+RUN npm ci && npm cache clean --force
 COPY --chown=node:node tsconfig.json ./
 COPY --chown=node:node src ./src
 COPY --chown=node:node examples ./examples
+RUN node examples/notes/build.mjs
 ENV HOST=0.0.0.0 PORT=3120 DATA_DIR=/data NODE_ENV=production
 RUN mkdir -p /data && chown node:node /data
 USER node

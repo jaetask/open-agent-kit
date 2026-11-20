@@ -3,65 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
 <title>Notes</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="style.css">
-<script src="app.js" defer></script>
+<link rel="stylesheet" href="app.css">
+<script type="module" src="app.js"></script>
 </head>
 <body>
-<header class="bar">
-  <div class="wrap bar-inner">
-    <span class="brand">Notes</span>
-    <span class="sub">an open-agent-kit example</span>
-    <button type="button" id="sign-out" class="link" hidden>Sign out</button>
-  </div>
-</header>
-
-<main class="wrap">
-  <section id="sign-in" class="panel narrow" hidden>
-    <h1>Sign in</h1>
-    <p class="muted">Enter the setup secret this App printed when it first started.</p>
-    <form id="sign-in-form" class="row">
-      <input id="secret" type="password" autocomplete="current-password" placeholder="Setup secret" required>
-      <button type="submit">Sign in</button>
-    </form>
-    <p id="sign-in-error" class="error" hidden></p>
-  </section>
-
-  <div id="app" class="grid" hidden>
-    <div class="stack">
-      <section class="panel">
-        <h2>Your notes</h2>
-        <form id="add-form" class="row">
-          <input id="add-text" type="text" placeholder="Write a note" required maxlength="500">
-          <button type="submit">Add</button>
-        </form>
-        <ul id="notes" class="notes"></ul>
-        <p id="notes-empty" class="muted" hidden>No notes yet.</p>
-      </section>
-
-      <section class="panel" id="holds-panel">
-        <h2>Waiting for your yes</h2>
-        <ul id="holds" class="holds"></ul>
-        <p id="holds-empty" class="muted">Nothing is waiting.</p>
-      </section>
-
-      <section class="panel">
-        <h2>Last result</h2>
-        <div id="last" class="muted">Nothing yet.</div>
-      </section>
-    </div>
-
-    <section class="panel chat">
-      <h2>Ask the agent</h2>
-      <ol id="messages" class="messages"></ol>
-      <form id="chat-form" class="row">
-        <input id="chat-text" type="text" placeholder="Add milk to my notes" required maxlength="2000">
-        <button type="submit">Send</button>
-      </form>
-    </section>
-  </div>
-</main>
+<div id="root"></div>
 </body>
 </html>
