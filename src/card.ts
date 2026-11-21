@@ -2,43 +2,27 @@ import { z } from "zod";
 import { checkName, checkText, fail } from "./names.js";
 import type { Change, Json } from "./outcome.js";
 
-/**
- * The version of the view catalogue: the closed set of view kinds below.
- * A Host renders a CardView only if it knows its kind at this catalogue
- * version or a later one; otherwise it shows the CardView's text.
- */
 export const CARD_CATALOGUE = 1;
 
-// A path names a value inside the output: keys joined by dots, nothing else.
 const path = z
   .string()
   .regex(/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/, "a path is keys joined by dots");
 const field = z.strictObject({ label: z.string().min(1), path });
 const title = z.string().min(1);
 
-/** The view kinds, as zod schemas. `CARD_VIEW_SCHEMAS` exports them as JSON Schema. */
 const views = {
-  /** Rows from an output that is an array: one row per item, one column per field. */
   list: z.strictObject({ kind: z.literal("list"), title, fields: z.array(field).min(1) }),
-  /** One item's fields, from an output that is an object. */
   record: z.strictObject({ kind: z.literal("record"), title, fields: z.array(field).min(1) }),
-  /** What the Call created, updated or deleted, from the Outcome's Changes. */
   change: z.strictObject({ kind: z.literal("change"), title }),
 };
 const view = z.discriminatedUnion("kind", [views.list, views.record, views.change]);
 
-/** How a Card shows an Outcome: one view kind from the catalogue. */
 export type CardDefinitionView = z.infer<typeof view>;
 
-/** The JSON Schema of each view kind in the catalogue. */
 export const CARD_VIEW_SCHEMAS = Object.fromEntries(
   Object.entries(views).map(([kind, schema]) => [kind, z.toJSONSchema(schema) as Json]),
 ) as Record<keyof typeof views, Json>;
 
-/**
- * A versioned description of how an Outcome is shown: plain data, so it can
- * cross between Apps. Raise the version when what a Card shows changes.
- */
 export type Card = {
   readonly name: string;
   readonly version: number;
@@ -68,17 +52,11 @@ export function defineCard(card: Card): Card {
 
 type Head = { card: string; version: number; catalogue: number; title: string; text: string };
 
-/**
- * A Card filled from one Outcome: what crosses between Apps. Every value is
- * text. `text` is the whole Card as plain text, for a Host that does not
- * know this kind or catalogue version.
- */
 export type CardView =
   | (Head & { kind: "list"; columns: string[]; rows: string[][] })
   | (Head & { kind: "record"; fields: { label: string; value: string }[] })
   | (Head & { kind: "change"; changes: Change[] });
 
-// The value at a path, as text. Missing is empty; objects and arrays are JSON.
 function at(value: unknown, keys: string): string {
   let found: unknown = value;
   for (const key of keys.split(".")) {
@@ -93,7 +71,6 @@ function at(value: unknown, keys: string): string {
 
 const plain = (head: string, lines: string[]) => [head, ...lines].join("\n");
 
-/** Fills `card` from a succeeded Outcome's output and Changes. */
 export function cardView(card: Card, outcome: { output: Json; changes: Change[] }): CardView {
   const head = {
     card: card.name,
@@ -130,12 +107,10 @@ export function cardView(card: Card, outcome: { output: Json; changes: Change[] 
 
 const KINDS: readonly string[] = ["list", "record", "change"];
 
-/** Whether this Kit can draw `view` itself: a known kind at a catalogue version it knows. */
 export function knowsCard(view: { kind: string; catalogue: number }): boolean {
   return view.catalogue <= CARD_CATALOGUE && KINDS.includes(view.kind);
 }
 
-/** A CardView as plain text. Never fails: an unknown view shows its own text. */
 export function cardText(view: CardView | { title: string; text: string }): string {
   return view.text || view.title;
 }

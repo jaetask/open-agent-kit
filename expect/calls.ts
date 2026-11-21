@@ -1,6 +1,3 @@
-// Runs a Call script against the pipeline and renders what happened. Each
-// script runs twice: on memoryStore with notes in its Map, and on a SQLite
-// file with notes in the same database. The two runs must agree.
 import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -29,19 +26,13 @@ type CallData = Partial<Call> & Pick<Call, "id" | "action">;
 type Step =
   | { invoke: CallData }
   | { decide: { id: string; decision: Decision } }
-  // invoke; the process stops after the Domain's change, before the commit
   | { crash: CallData }
-  // a new process: a new pipeline over what was committed
   | { restart: true }
   | { wait_hours: number };
 
 const START = Date.parse("2026-01-01T00:00:00Z");
-// How much text a stored Call's input keeps, small here so a script can go over it.
 const KEEP = 60;
 
-// Script behaviour around a notes repository: adding the text "fail" writes
-// the note and then throws; after a crash step, the next change is written
-// and then never finishes.
 function scripted(notes: Notes, crash: { next: boolean }): Notes {
   const after = <T>(value: T): T => {
     if (!crash.next) return value;
@@ -53,7 +44,6 @@ function scripted(notes: Notes, crash: { next: boolean }): Notes {
     add: (owner, text) => {
       const note = notes.add(owner, text);
       if (text === "fail") throw new Error("the disk is full");
-      // Refused after the note was written: the pipeline must put it back.
       if (text === "refuse") throw new Refusal("not-today", "Not today.");
       return after(note);
     },
@@ -106,7 +96,7 @@ function sqliteVariant(crash: { next: boolean }): Variant {
         ],
       }),
     restart: () => {
-      db.close(); // an open transaction is rolled back, as when a process dies
+      db.close();
       db = new DatabaseSync(file);
       store = sqliteStore(db);
     },
@@ -119,9 +109,6 @@ function sqliteVariant(crash: { next: boolean }): Variant {
   };
 }
 
-// The SQLite variant, with every invoke sent over MCP from another App: one
-// Connection per Principal, all Effects in scope. Decisions are made here,
-// in the App that owns the Actions.
 function remoteVariant(crash: { next: boolean }): Variant {
   const dir = mkdtempSync(join(tmpdir(), "kit-expect-"));
   const file = join(dir, "app.db");
@@ -163,7 +150,7 @@ function remoteVariant(crash: { next: boolean }): Variant {
       };
     },
     restart: () => {
-      db.close(); // an open transaction is rolled back, as when a process dies
+      db.close();
       db = new DatabaseSync(file);
     },
     notes: async () => sqliteNotes(db).list("p1"),
@@ -239,7 +226,6 @@ async function run(steps: Step[], variant: Variant, crash: { next: boolean }): P
     const record = await variant.record(id);
     records.push([id, record?.state ?? "(none)", record?.history.join(" · ") ?? ""]);
   }
-  // Stored inputs that differ from what was sent: over-long text is not kept.
   const trimmedInputs = [];
   for (const id of ids) {
     const stored = JSON.stringify((await variant.record(id))?.call.input);

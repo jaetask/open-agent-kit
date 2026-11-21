@@ -1,6 +1,3 @@
-// The notes page, built from @jaetask/toolkit: the app shell, panels and one edit page.
-// Pages are routed on the hash (#/notes, #/notes/new, #/waiting, #/chat, #/settings). Every request
-// carries the X-Kit-Request header; Cards arrive as escaped HTML made by the App's cardHtml.
 import "@fontsource-variable/inter";
 import {
   AppShell,
@@ -67,14 +64,11 @@ function describe(outcome: Outcome): string {
   return `${outcome.state}: ${"reason" in outcome ? outcome.reason.message : ""}`;
 }
 
-/** A Card from the App, already escaped by cardHtml (so innerHTML is safe); or the Outcome as text. */
 function Result({ outcome }: { outcome: Outcome }) {
   if (outcome.state === "succeeded" && "card" in outcome && outcome.card?.html)
     return <div className="card-html" dangerouslySetInnerHTML={{ __html: outcome.card.html }} />;
   return <p className="tk-muted">{describe(outcome)}</p>;
 }
-
-// ---------- Routing on the hash ----------
 
 const hashPath = () => window.location.hash.replace(/^#/, "") || "/notes";
 function useHashPath() {
@@ -94,8 +88,6 @@ const HashLink: LinkComponent = ({ href, children, ...rest }) => (
     {children}
   </a>
 );
-
-// ---------- Data ----------
 
 function useData(signedIn: boolean) {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -123,8 +115,6 @@ function useData(signedIn: boolean) {
   }, [signedIn, refresh]);
   return { notes, holds, view, refresh };
 }
-
-// ---------- Pages ----------
 
 function NotesPage({
   notes,
@@ -372,8 +362,6 @@ function SignIn({ onSignedIn }: { onSignedIn: () => void }) {
     </div>
   );
 }
-
-// ---------- App ----------
 
 const icon = (d: string): ReactNode => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>

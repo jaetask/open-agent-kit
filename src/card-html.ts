@@ -6,11 +6,6 @@ const escapeHtml = (text: string) =>
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string,
   );
 
-/**
- * A CardView as static HTML: escaped text in plain elements with class
- * names, no scripts, no styles, no links. A view this Kit does not know is
- * shown as its text in a `<pre>`.
- */
 export function cardHtml(
   view: CardView | { kind: string; catalogue: number; title: string; text: string },
 ): string {

@@ -1,5 +1,3 @@
-// The /pi entry point: an AgentRuntime on pi-durable. The only part of the
-// Kit that imports pi-durable.
 import { awaitWithContext, BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
 import type { Models } from "@earendil-works/pi-ai";
 import {
@@ -23,23 +21,16 @@ import { type CallDetails, INPUT_KIND, type InputData, toView } from "./view.js"
 export { type ModelChoice, modelsFromEnv } from "./models.js";
 
 export type PiRuntimeOptions = {
-  /** pi-durable storage, such as `openNodeSqliteStorage(path, { prefix: "pi_" })`. */
   storage: Storage;
   models: Models;
-  /** The model every conversation runs with. */
   model: { provider: string; modelId: string };
-  /** The clock. Defaults to Date.now. Every process opening one storage must use the same clock. */
   now?: () => number;
 };
 
-// Each Kit conversation id, the pi conversation it runs in, how many Inputs it
-// has taken, and whether it was stopped. Stored with pi's state.
-// Outcomes are JSON; their Hold's input is typed unknown only because Call input is.
 type Details = Parameters<ToolExecutionApi["details"]>[0];
 const asJson = (details: CallDetails) => details as unknown as Details;
 
 type Conversations = { [kitId: string]: { pi: number; runs: number; stopped: boolean } };
-// `held` maps each Call held in a tool to its Kit conversation.
 const KitConversations = defineDoc<{ conversations: Conversations; held?: Record<string, string> }>(
   {
     kind: "kit.conversations",
@@ -50,17 +41,10 @@ const KitConversations = defineDoc<{ conversations: Conversations; held?: Record
   },
 );
 
-/**
- * An AgentRuntime on pi-durable. `start()` opens the Harness, with one
- * extension per ActionSource and one tool per Action. `close()` closes it;
- * opening the same storage again continues where it stopped.
- */
 export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
   let harness: Harness | undefined;
-  // pi-durable reads the registry at each use, so an extension installed later is used at once.
   const registry = createRegistry();
   const tools = new Set<string>();
-  // Calls waiting for a Decision in this process, by Call id.
   const waiting = new Map<CallId, (outcome: Outcome) => void>();
   const watchers = new Map<
     string,
@@ -72,7 +56,6 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
     return harness;
   };
 
-  // The newest Input placed in this tool call's conversation: the run it belongs to.
   const runOf = async (api: ToolExecutionApi): Promise<InputData> => {
     const conversation = await open().conversation(api.conversationId, context);
     let cursor: Parameters<NonNullable<typeof conversation>["entries"]>[2];
@@ -85,14 +68,12 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
     throw new Error("piRuntime: a tool call with no Input before it");
   };
 
-  // Resolves with the Call's final Outcome, when the App passes it to resume().
   const decided = (call: Call) => new Promise<Outcome>((resolve) => waiting.set(call.id, resolve));
 
   const extension = async (source: ActionSource) => {
     const contract = await source.contract();
     return defineExtension({
       name: contract.domain,
-      // What the agent is told about this Domain, in the system prompt.
       sections: [section(`kit-${contract.domain}`, () => agentContext(contract))],
       tools: contract.actions.map((action) => {
         const { $schema: _, ...parameters } = action.input;
@@ -101,8 +82,6 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
           name: toolName(action.name),
           description: action.description,
           parameters,
-          // The pipeline returns the stored Outcome for a Call id it has seen,
-          // so a rerun after a restart never runs an Action twice.
           replay: "safe",
           executionMode: action.effect === "read" ? "parallel" : "sequential",
           execute: async (args, api, ctx) => {
@@ -138,7 +117,6 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
     });
   };
 
-  // The pi conversation for a Kit conversation id, created on first use.
   const ensuring = new Map<string, Promise<ConversationId>>();
   const ensure = (to: string): Promise<ConversationId> => {
     const found = ensuring.get(to);
@@ -234,7 +212,7 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
         handle.start(async (change) => {
           if (change.kind === "value") await show(change.value);
         });
-      })().catch(() => undefined); // the Harness closed or failed: the watch ends
+      })().catch(() => undefined);
       return () => {
         ended = true;
         set.delete(watcher);
@@ -244,7 +222,7 @@ export function piRuntime(options: PiRuntimeOptions): AgentRuntime {
 
     resume: async (call, outcome) => {
       const resolve = waiting.get(call);
-      if (!resolve) return; // a rerun after a restart reads the Outcome from the pipeline
+      if (!resolve) return;
       waiting.delete(call);
       resolve(outcome);
     },

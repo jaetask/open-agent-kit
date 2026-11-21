@@ -3,11 +3,6 @@ import type { Caller, Principal } from "./call.js";
 import type { Card } from "./card.js";
 import { checkName, checkSemver, checkText, checkUnique, fail } from "./names.js";
 
-/**
- * A bounded part of an App. Nothing outside reaches its data except through
- * its Actions. `Deps` is what its Actions' run() needs besides its input.
- */
-/** Where a Call came from, for a Domain that authorises by it. */
 export type CallFrom = { caller: Caller; connection?: string };
 
 export type Domain<Deps = object> = {
@@ -16,11 +11,6 @@ export type Domain<Deps = object> = {
   readonly about: string;
   readonly actions: readonly AnyAction<Deps>[];
   readonly cards: readonly Card[];
-  /**
-   * May this Principal run this Action? Asked on every Call. `from` says where
-   * the Call came from, for a Domain that keeps some Actions for one Caller,
-   * such as the App's own page.
-   */
   authorise(principal: Principal, action: AnyAction<Deps>, from?: CallFrom): boolean;
 };
 
@@ -30,7 +20,6 @@ export function defineDomain<Deps = object>(domain: {
   about: string;
   actions: readonly AnyAction<Deps>[];
   cards?: readonly Card[];
-  /** Defaults to allowing every Principal. */
   authorise?: (principal: Principal, action: AnyAction<Deps>, from?: CallFrom) => boolean;
 }): Domain<Deps> {
   checkName("Domain", domain.name);

@@ -26,9 +26,9 @@ type Step =
         decision?: "yes";
       };
     }
-  | { post_as: string } // a raw MCP request; the token is a Connection's name, "none" or "wrong"
+  | { post_as: string }
   | { revoke: string }
-  | { history: string }; // the Calls that came through a Connection
+  | { history: string };
 
 const json = (value: unknown) => `\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
 
@@ -53,8 +53,8 @@ export async function runMcp(input: string): Promise<string> {
   });
   const { db, store, connections } = app;
   const tokens = new Map<string, string>([["wrong", "kit_not-a-token"]]);
-  const ids = new Map<string, string>(); // Connection name → id
-  const hosts = new Map<string, string>(); // Connection id → name
+  const ids = new Map<string, string>();
+  const hosts = new Map<string, string>();
   for (const c of wanted) {
     const made = await connections.request(c.name, { id: c.principal }, c.effects);
     ids.set(c.name, made.id);

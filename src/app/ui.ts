@@ -1,6 +1,3 @@
-// HTTP routes for the App's own page: the UI Caller. Every route but the
-// session check needs the session cookie; every write also needs the
-// X-Kit-Request header and, when the browser sends one, a same-origin Origin.
 import { randomUUID } from "node:crypto";
 import { EFFECTS, type Effect } from "../action.js";
 import type { ActionName, Principal } from "../call.js";
@@ -27,17 +24,12 @@ const cookieOf = (request: Request) =>
     .map((part) => part.trim().split("="))
     .find(([name]) => name === COOKIE)?.[1];
 
-/**
- * An Outcome for the page: a succeeded one's Card also as escaped HTML from
- * cardHtml, so the page shows Cards without building markup from data.
- */
 function withHtml(outcome: Outcome) {
   return outcome.state === "succeeded" && outcome.card
     ? { ...outcome, card: { ...outcome.card, html: cardHtml(outcome.card) } }
     : outcome;
 }
 
-/** A conversation as server-sent events: one `view` event per change. */
 function viewStream(runtime: AgentRuntime, to: string): Response {
   let unwatch = () => {};
   const body = new ReadableStream<Uint8Array>({
@@ -58,7 +50,6 @@ function viewStream(runtime: AgentRuntime, to: string): Response {
   });
 }
 
-/** Why a request is refused before it reaches the App, or null. */
 function csrf(request: Request): string | null {
   if (request.method === "GET" || request.method === "HEAD") return null;
   if (request.headers.get("x-kit-request") !== "1") return "missing X-Kit-Request header";
@@ -72,17 +63,13 @@ export type UiOptions = {
   store: CallStore<unknown>;
   sessions: Sessions;
   runtime: AgentRuntime | undefined;
-  /** Hosts that asked to pair with this App. */
   connections: Connections;
-  /** Other Apps this App paired with. */
   host: HostPlugins;
 };
 
-/** Answers `/api/...`, or returns null for any other path. */
 export function uiRoutes(options: UiOptions) {
   const { calls, store, sessions, runtime, connections, host } = options;
 
-  /** The signed-in Principal, or null. */
   const principalOf = async (request: Request): Promise<Principal | null> => {
     const token = cookieOf(request);
     return token ? sessions.authenticate({ token }) : null;
@@ -90,7 +77,7 @@ export function uiRoutes(options: UiOptions) {
 
   const routes = async (request: Request, principal: Principal): Promise<Response> => {
     const { pathname } = new URL(request.url);
-    const parts = pathname.split("/").filter(Boolean); // ["api", ...]
+    const parts = pathname.split("/").filter(Boolean);
     if (request.method === "POST" && pathname === "/api/calls") {
       const body = (await request.json()) as { id?: string; action: ActionName; input?: unknown };
       const outcome = await calls.invoke({
@@ -122,7 +109,6 @@ export function uiRoutes(options: UiOptions) {
       if (!(await connections.get(id))) return json({ error: "No such Connection." }, 404);
       try {
         if (parts[3] === "approve") {
-          // The person may choose who the Connection acts as and what it may do.
           const body = (await request.json().catch(() => ({}))) as {
             principal?: unknown;
             effects?: unknown;

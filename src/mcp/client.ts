@@ -6,19 +6,11 @@ import { toolName } from "../tool-name.js";
 import { CALL_ID, contractUri, DECISION } from "./meta.js";
 
 export type RemoteOptions = {
-  /** The other App's MCP endpoint. */
   url: string;
-  /** The Connection token that App minted when the person paired. */
   token: string;
-  /** The Domain to use there. */
   domain: string;
 };
 
-/**
- * An ActionSource for a Domain in another App, over MCP. The Call id goes
- * with every call, so a retry returns the stored Outcome there. The Call's
- * Principal is not sent: the other App takes it from the Connection.
- */
 export async function remoteSource(
   options: RemoteOptions,
 ): Promise<ActionSource & { close(): Promise<void> }> {
@@ -55,7 +47,6 @@ export async function remoteSource(
   };
 }
 
-/** The Domains another App serves to this Connection, by their Contract resources. */
 export async function remoteDomains(options: Omit<RemoteOptions, "domain">): Promise<string[]> {
   const client = new Client({ name: "open-agent-kit", version: "1" });
   const transport = new StreamableHTTPClientTransport(new URL(options.url), {

@@ -16,29 +16,16 @@ import {
 import type { ActionSource } from "./runtime.js";
 import type { CallRecord, CallStore } from "./store.js";
 
-/** The Call pipeline: validate, authorise, gate, execute. Every Caller goes through it. */
 export interface Calls {
-  /**
-   * Runs a Call, or returns the stored Outcome if this Call id was seen before.
-   * `decision` is a yes the caller already has from the person: a danger Call
-   * then goes through its Hold at once. Only the App's own code, or a
-   * Connection allowed to decide, passes it.
-   */
   invoke(call: Call, decision?: "yes"): Promise<Outcome>;
-  /** Ends a Hold. A Call that is not held returns its current Outcome. */
   decide(id: CallId, decision: Decision): Promise<Outcome>;
 }
 
-/** A Domain, and how to build its dependencies from the store's data handle. */
 export type Provided<Data> = {
   readonly domain: Domain<object>;
   readonly deps: (data: Data) => object;
 };
 
-/**
- * Pairs a Domain with its dependencies. `deps` receives the store's data
- * handle, inside the transaction when the Action is a write or danger.
- */
 export function provide<Deps, Data>(
   domain: Domain<Deps>,
   deps: (data: Data) => NoInfer<Deps>,
@@ -46,36 +33,18 @@ export function provide<Deps, Data>(
   return { domain: domain as unknown as Domain<object>, deps: deps as (data: Data) => object };
 }
 
-/** A Contract installed in this App over a Connection, and the ActionSource that runs it. */
 export type Plugin = { contract: Contract; source: ActionSource };
 
 export type CallsOptions<Data> = {
   domains: Provided<Data>[];
-  /**
-   * Plugins: Actions another App owns. This pipeline gates them (danger
-   * holds here, where the person is) and the owning App validates,
-   * authorises and runs them.
-   */
   plugins?: Plugin[] | (() => Plugin[]);
   store: CallStore<Data>;
-  /** How long a Hold waits for a Decision, in milliseconds. Defaults to one day. */
   holdFor?: number;
-  /**
-   * The longest text, in characters, kept in a stored Call's input once the
-   * Call has ended. A longer one, such as an image as base64, is replaced by
-   * its length. Defaults to 16384; 0 keeps everything.
-   */
   keepInput?: number;
-  /** The clock. Defaults to Date.now. */
   now?: () => number;
-  /**
-   * Called once for each Call that succeeds with Changes, after its Outcome
-   * is stored: never for a retry that returns the stored Outcome.
-   */
   onChange?: (event: ChangeEvent) => void;
 };
 
-/** What one Call changed, for pages that show the changed things. */
 export type ChangeEvent = { call: Call; changes: Change[] };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -89,7 +58,6 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
   type Local = { action: AnyAction; domain: Domain<object>; deps: (data: Data) => object };
   type Remote = { effect: Effect; source: ActionSource };
   const actions = new Map<string, Local>();
-  // The Plugins installed now: a list, or a function for Plugins that come and go.
   const installed = () =>
     typeof options.plugins === "function" ? options.plugins() : (options.plugins ?? []);
   const remoteOf = (action: string): Remote | undefined => {
@@ -105,11 +73,8 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     }
   }
 
-  // Calls running in this process, by id, so a second invoke waits for the first.
   const inFlight = new Map<CallId, Promise<Outcome>>();
 
-  // read Actions share; everything that writes (write and danger Actions, and
-  // every store put) takes turns, and waits for the reads already running.
   let tail: Promise<unknown> = Promise.resolve();
   const reading = new Set<Promise<void>>();
   const settled = (p: Promise<unknown>) =>
@@ -136,7 +101,6 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     record.history.push(`${event} → ${record.state}`);
   };
 
-  // A copy of `value` with every over-long text replaced by its length.
   const trimmed = (value: unknown): unknown => {
     if (typeof value === "string") {
       return value.length > keepInput ? { omitted: "text", characters: value.length } : value;
@@ -153,7 +117,6 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     record.outcome = outcome;
     if (outcome.state !== "held") {
       record.endedAt = new Date(now()).toISOString();
-      // The Call is over: its record no longer needs large input to run again.
       if (keepInput > 0) record.call = { ...record.call, input: trimmed(record.call.input) };
     }
     return outcome;
@@ -165,8 +128,6 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     return outcome;
   };
 
-  // Runs the Action and returns the record as succeeded. Throws if run()
-  // throws or returns the wrong shape.
   const succeed = async (record: CallRecord, data: Data): Promise<CallRecord> => {
     const found = actions.get(record.call.action);
     if (!found) throw new Error(`No Action is named ${record.call.action}`);
@@ -198,8 +159,6 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     return done;
   };
 
-  // run() threw: a Refusal ends the Call as rejected with its own Reason;
-  // anything else ends it as failed.
   const failed = (record: CallRecord, error: unknown): Outcome =>
     error instanceof Refusal
       ? ended(record, "REFUSE", { state: "rejected", reason: reason(error.code, error.message) })
@@ -211,7 +170,6 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
               : reason("run-failed", `${record.call.action} failed`),
         });
 
-  // A Plugin's Call runs in the App that owns it. This App stores the Outcome.
   const executeRemote = async (record: CallRecord, { effect, source }: Remote) => {
     const decided = record.history.includes("YES → running") ? "yes" : undefined;
     const run = async () => {
@@ -245,7 +203,6 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     });
   };
 
-  // Runs a Call and, once its Outcome is stored, tells onChange what it changed.
   const execute = async (record: CallRecord): Promise<Outcome> => {
     const outcome = await executeNow(record);
     if (outcome.state === "succeeded" && outcome.changes.length > 0) {
@@ -269,8 +226,6 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
       await exclusive(() => store.put(result));
       return result.outcome as Outcome;
     }
-    // write and danger: mark the Call running, then run it and store its
-    // Outcome in one transaction. A crash before the commit keeps neither.
     return exclusive(async () => {
       await store.put(record);
       let done: CallRecord | undefined;
@@ -320,7 +275,6 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     const effect = plugin?.effect ?? actions.get(call.action)?.action.effect;
     if (effect) record.effect = effect;
     if (plugin) {
-      // The owning App validates and authorises; this App only gates.
       move(record, "VALID");
       move(record, "ALLOW");
       return gate(record, plugin.effect, decision);
@@ -356,7 +310,6 @@ export function createCalls<Data>(options: CallsOptions<Data>): Calls {
     return gate(record, action.effect, decision);
   };
 
-  // A stored Call that is not final was held, or was running when the process stopped.
   const resume = async (record: CallRecord, decision?: "yes"): Promise<Outcome> => {
     if (record.state === "held") {
       if (expired(record)) return expire(record);

@@ -1,13 +1,8 @@
-// The browser session for a single-user App: Identity's second adapter.
-// A setup secret, made at first start or given by configuration, is
-// exchanged for a session cookie. Both are stored only as SHA-256 hashes,
-// and a session expires on the server as it does in the cookie.
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { Principal } from "../call.js";
 import type { Identity } from "../connection.js";
 
-/** How long a session lasts, on the server and in the cookie. */
 export const SESSION_DAYS = 30;
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -15,20 +10,9 @@ const hash = (text: string) => createHash("sha256").update(text).digest("hex");
 const secret = () => randomBytes(24).toString("base64url");
 
 export type Sessions = Identity & {
-  /**
-   * Makes sure a setup secret exists. Returns a new secret to show the
-   * person once, or null when one is set, or when a made one was used.
-   */
   setup(given?: string): string | null;
-  /**
-   * Exchanges the setup secret for a session token, or null. A secret the
-   * App made works once: it is deleted when the first session starts. A
-   * secret given by configuration keeps working, because whoever sets the
-   * configuration already controls the App.
-   */
   start(setupSecret: string): string | null;
   end(token: string): void;
-  /** Ends every session: sign out everywhere. */
   endAll(): void;
 };
 

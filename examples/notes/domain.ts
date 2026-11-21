@@ -1,5 +1,3 @@
-// The example Domain carried through every layer: one read, one write and
-// one danger Action, and the Cards that show their Outcomes.
 import { z } from "zod";
 import {
   defineAction,
@@ -107,6 +105,5 @@ export const notesDomain = defineDomain({
   about: "Short notes, one list per Principal.",
   actions: [listNotes, addNote, deleteNote, whoAmI],
   cards: [noteList, noteCard, notesChanged],
-  // A guest may read; only signed-in Principals may change notes.
   authorise: (principal, action) => principal.id !== "guest" || action.effect === "read",
 });

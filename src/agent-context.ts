@@ -7,10 +7,6 @@ const WHAT: Record<string, string> = {
   danger: "changes, after the person says yes",
 };
 
-/**
- * What an agent is told about a Domain: its about text and each Action as a
- * tool, with what it does to the world. A Runtime adds it to the system prompt.
- */
 export function agentContext(contract: Contract): string {
   return [
     `${contract.domain}: ${contract.about}`,

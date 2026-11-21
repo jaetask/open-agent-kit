@@ -1,5 +1,3 @@
-// Layer 1 through the public interface: what the define functions return,
-// and, in typeErrors below, what must not compile.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { z } from "zod";
@@ -38,8 +36,6 @@ test("run() is a plain function of its input and dependencies", async () => {
   assert.deepEqual(note, { id: "n1", owner: "p1", text: "milk" });
 });
 
-// Never called: each line marked @ts-expect-error must fail to compile, and
-// `npm run typecheck` fails if any of them compiles.
 export function typeErrors() {
   defineAction({
     name: "x",

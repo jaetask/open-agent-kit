@@ -1,0 +1,25 @@
+# Decisions
+
+Decisions about the code live here, because comments are not kept in the source.
+
+- [1. A Call id makes a Call run once](0001-a-call-id-makes-a-call-run-once.md)
+- [2. A write's change and its Outcome commit in one transaction](0002-a-write-s-change-and-its-outcome-commit-in-one-transaction.md)
+- [3. Read Actions share and everything that writes takes turns](0003-read-actions-share-and-everything-that-writes-takes-turns.md)
+- [4. A stored Call keeps long input text only until the Call ends](0004-a-stored-call-keeps-long-input-text-only-until-the-call-ends.md)
+- [5. A change event follows the stored Outcome](0005-a-change-event-follows-the-stored-outcome.md)
+- [6. A Plugin's danger Call is held in the Host](0006-a-plugin-s-danger-call-is-held-in-the-host.md)
+- [7. The Connection decides the Principal and the Effects](0007-the-connection-decides-the-principal-and-the-effects.md)
+- [8. Pairing tokens and claim secrets are stored as hashes and shown once](0008-pairing-tokens-and-claim-secrets-are-stored-as-hashes-and-shown-once.md)
+- [9. The setup secret signs the person in and a made secret works once](0009-the-setup-secret-signs-the-person-in-and-a-made-secret-works-once.md)
+- [10. The page's routes need the cookie, a header and a same-origin Origin](0010-the-page-s-routes-need-the-cookie-a-header-and-a-same-origin-origin.md)
+- [11. A Card crosses between Apps as data and reaches the page as escaped HTML](0011-a-card-crosses-between-apps-as-data-and-reaches-the-page-as-escaped-html.md)
+- [12. The page's security header allows inline styles and limits scripts to the App's own files](0012-the-page-s-security-header-allows-inline-styles-and-limits-scripts-to-the-app-s-own-files.md)
+- [13. A new major version of a Plugin's Contract waits for the person](0013-a-new-major-version-of-a-plugin-s-contract-waits-for-the-person.md)
+- [14. A failed Call is a value with a message that can be shown to a person](0014-a-failed-call-is-a-value-with-a-message-that-can-be-shown-to-a-person.md)
+- [15. The Runtime records which conversation a held Call belongs to](0015-the-runtime-records-which-conversation-a-held-call-belongs-to.md)
+- [16. The pi adapter follows pi-durable's rules for the registry, the clock and reruns](0016-the-pi-adapter-follows-pi-durable-s-rules-for-the-registry-the-clock-and-reruns.md)
+- [17. An App with no usable model still starts and the agent says what is missing](0017-an-app-with-no-usable-model-still-starts-and-the-agent-says-what-is-missing.md)
+- [18. An Action's tool name joins Domain and Action with two underscores](0018-an-action-s-tool-name-joins-domain-and-action-with-two-underscores.md)
+- [19. A note's id is never used again](0019-a-note-s-id-is-never-used-again.md)
+- [20. The page build defines import.meta.env for the toolkit](0020-the-page-build-defines-import-meta-env-for-the-toolkit.md)
+- [21. Type proofs are functions that are never called](0021-type-proofs-are-functions-that-are-never-called.md)

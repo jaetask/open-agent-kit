@@ -1,6 +1,3 @@
-// Builds a Domain from plain JSON, the way a JavaScript caller with no type
-// checking might, so the definition checks can be proven case by case.
-// Schemas are empty objects and run() returns {}: only the definitions matter.
 import { z } from "zod";
 import { type AnyAction, type Card, defineAction, defineCard, defineDomain } from "../src/index.js";
 

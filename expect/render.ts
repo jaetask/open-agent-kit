@@ -1,4 +1,3 @@
-// Renders the Kit's public values as Markdown for expect files.
 import { table } from "@jaetask/snap";
 import { agentContext, type Contract, type MachineDefinition } from "../src/index.js";
 

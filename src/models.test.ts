@@ -1,4 +1,3 @@
-// The model choice from the environment, with no network and no keys.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { modelsFromEnv } from "./pi/index.js";

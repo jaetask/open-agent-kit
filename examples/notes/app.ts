@@ -1,7 +1,3 @@
-// The notes example as a runnable App. Configuration is the environment:
-//   PORT (3120), HOST (127.0.0.1), DATA_DIR (data), KIT_SETUP_SECRET,
-//   KIT_CONNECT (other Apps' MCP endpoints, comma-separated), KIT_NAME (notes),
-//   and the model: KIT_MODEL with the provider's key, or KIT_OPENAI_BASE_URL.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";

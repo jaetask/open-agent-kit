@@ -1,5 +1,3 @@
-// Durability cases for the pi-durable adapter: the App's database and pi's
-// storage are SQLite files, and a restart closes both and opens them again.
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -23,10 +21,10 @@ import { describe, scriptPlan } from "./runtime.js";
 type Step =
   | { submit: { to: string; text: string } }
   | { decide: { to: string; call: string; decision: Decision; resume?: boolean } }
-  | { crash_next_write: true } // the next notes write happens, then never finishes
+  | { crash_next_write: true }
   | { restart: true }
-  | { sweep: true } // the App's expiry sweep runs once
-  | { held: true } // the held Calls the App lists for p1
+  | { sweep: true }
+  | { held: true }
   | { wait_hours: number };
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
@@ -79,7 +77,6 @@ export async function runDurability(input: string): Promise<string> {
       if (seen.at(-1) !== view.status) seen.push(view.status);
     });
   };
-  // Waits until nothing in the conversation changes for a while.
   const settle = async (to: string) => {
     let last = "";
     for (let quiet = 0, n = 0; quiet < 20 && n < 2000; n++) {
@@ -122,7 +119,7 @@ export async function runDurability(input: string): Promise<string> {
         const list = held.map((r, k) => `${r.call.id} ${r.call.action} in ${where[k] ?? "none"}`);
         lines.push(`${n} held for p1: ${list.join("; ") || "none"}`);
       } else if ("restart" in step) {
-        await app.close(); // an open write transaction is rolled back
+        await app.close();
         await open();
         for (const to of statuses.keys()) await settle(to);
         lines.push(`${n} restart`);

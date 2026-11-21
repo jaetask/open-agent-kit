@@ -1,5 +1,3 @@
-// Runs the Runtime conformance suite on pi-durable, with a scripted model:
-// pi-ai's faux provider answers from the same Plan the fake Runtime uses.
 import { createModels } from "@earendil-works/pi-ai/models";
 import {
   type FauxResponseFactory,
@@ -16,11 +14,10 @@ type Text = string | { type: string; text?: string }[];
 const textOf = (content: Text) =>
   typeof content === "string" ? content : content.map((c) => c.text ?? "").join("");
 
-/** A pi model that follows `plan`: the Input's Calls in one round, then "Done.". */
 export function scriptedModels(plan: Plan) {
   const faux = fauxProvider();
   const answer: FauxResponseFactory = (context) => {
-    faux.appendResponses([answer]); // answer every request, however many
+    faux.appendResponses([answer]);
     const messages = context.messages as { role: string; content: Text }[];
     const last = messages.findLastIndex((m) => m.role === "user");
     if (messages.slice(last + 1).some((m) => m.role === "assistant")) {
@@ -43,7 +40,6 @@ export function scriptedModels(plan: Plan) {
   return { models, model: { provider: model.provider, modelId: model.id } };
 }
 
-/** A conformance RuntimeFactory: piRuntime on `storage`, with the scripted model. */
 export const piFactory =
   (storage: () => Storage = () => new MemoryStorage()) =>
   (plan: Plan) =>

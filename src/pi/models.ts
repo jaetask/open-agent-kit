@@ -1,6 +1,3 @@
-// The model for a piRuntime, from environment variables. pi-ai's built-in
-// providers read their own keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, ...).
-// Without a usable model the agent says so instead of failing.
 import { createModels, createProvider, type Models } from "@earendil-works/pi-ai";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
@@ -9,13 +6,10 @@ import { fauxAssistantMessage, fauxProvider } from "@earendil-works/pi-ai/provid
 export type ModelChoice = {
   models: Models;
   model: { provider: string; modelId: string };
-  /** False when the agent can only say what is missing. */
   ready: boolean;
-  /** One line about the choice, for the App's log. Never contains a key. */
   note: string;
 };
 
-/** A model that answers every message with `text`. */
 function sayOnly(text: string): ModelChoice {
   const faux = fauxProvider({ provider: "kit-unconfigured" });
   const answer = () => {
@@ -34,12 +28,6 @@ function sayOnly(text: string): ModelChoice {
   };
 }
 
-/**
- * Reads the model from the environment:
- * - `KIT_MODEL`: `provider/model`, such as `anthropic/<model id>`, from pi-ai's catalogue.
- * - `KIT_OPENAI_BASE_URL`: an OpenAI-compatible server, such as a local model server;
- *   then `KIT_MODEL` is `local/<model id>`, and `KIT_OPENAI_API_KEY` is sent if set.
- */
 export async function modelsFromEnv(env: NodeJS.ProcessEnv = process.env): Promise<ModelChoice> {
   const [provider, ...rest] = (env.KIT_MODEL ?? "").split("/");
   const modelId = rest.join("/");
@@ -56,7 +44,6 @@ export async function modelsFromEnv(env: NodeJS.ProcessEnv = process.env): Promi
       name: provider,
       baseUrl,
       auth: {
-        // A local server needs no key, but requests carry one: send a placeholder.
         apiKey: { name: provider, resolve: async () => ({ auth: { apiKey: key ?? "none" } }) },
       },
       models: [
