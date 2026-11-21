@@ -1,6 +1,3 @@
-// Pairing over HTTP between two running Apps. "tasks" owns the notes
-// Domain; "talk" is started with connect = tasks' MCP endpoint and an agent
-// on pi-durable. tasks can restart with a newer Domain version.
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,15 +12,15 @@ import { scriptedModels } from "./pi.js";
 import { describe, scriptPlan } from "./runtime.js";
 
 type Step =
-  | { tasks_version: string } // (re)start tasks with this Domain version
-  | { talk: true } // start talk, which asks tasks to pair
+  | { tasks_version: string }
+  | { talk: true }
   | { tasks_page: { method: string; path: string; body?: unknown } }
   | { talk_page: { method: string; path: string } }
-  | { sync: true } // talk claims, installs and checks versions
+  | { sync: true }
   | { chat: string }
   | { wait_minutes: number }
-  | { pair: string } // a raw POST /pair to tasks with this host name
-  | { claim: { pair: number; secret?: string } }; // POST /pair/:id/claim for the nth raw pair
+  | { pair: string }
+  | { claim: { pair: number; secret?: string } };
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
 
@@ -61,7 +58,6 @@ export async function runPairing(input: string): Promise<string> {
     });
     return response.json();
   };
-  // Connection ids are random: show them by position.
   const ids: string[] = [];
   const clean = (value: unknown) => {
     let text = JSON.stringify(value);
@@ -81,7 +77,6 @@ export async function runPairing(input: string): Promise<string> {
       const n = `${i + 1}.`;
       if ("tasks_version" in step) {
         await tasks?.close();
-        // Let clients see the old server's sockets close before the port is reused.
         await new Promise((resolve) => setTimeout(resolve, 50));
         const domain = defineDomain({
           name: notesDomain.name,
@@ -155,7 +150,7 @@ export async function runPairing(input: string): Promise<string> {
         if (response.ok) {
           const pair = JSON.parse(text) as { id: string; claim: string };
           pairs.push(pair);
-          clean(pair.id); // so later steps can name it <connection n>
+          clean(pair.id);
         }
         const shown = response.ok ? `pair ${pairs.length}, with a claim secret` : text;
         lines.push(
@@ -177,7 +172,6 @@ export async function runPairing(input: string): Promise<string> {
       } else {
         const asked = (views.get("t1")?.messages ?? []).filter((m) => m.from === "person").length;
         await talk?.runtime?.submit("t1", { text: step.chat }, { id: "owner" });
-        // This Input's messages: from its person message to the agent's answer.
         const mine = () => {
           const all = views.get("t1")?.messages ?? [];
           const starts = all.flatMap((m, k) => (m.from === "person" ? [k] : []));
@@ -194,7 +188,6 @@ export async function runPairing(input: string): Promise<string> {
             added.push(describe(m));
             continue;
           }
-          // Whether the Call reached talk's pipeline: an uninstalled Plugin is not offered at all.
           const record = await talk?.store.get(m.call);
           added.push(`${describe(m)} [talk's pipeline: ${record ? record.state : "never called"}]`);
         }

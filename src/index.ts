@@ -1,7 +1,3 @@
-/**
- * @jaetask/open-agent-kit: the core. See docs/ARCHITECTURE.md for each
- * layer's interface and GLOSSARY.md for the words.
- */
 export type { Action, AnyAction, Effect, RunContext } from "./action.js";
 export { agentContext } from "./agent-context.js";
 export { defineAction, EFFECTS } from "./action.js";

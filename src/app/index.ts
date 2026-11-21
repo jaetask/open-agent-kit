@@ -1,6 +1,3 @@
-// The /app entry point: one App, wired. It opens the App database, builds
-// the pipeline, its store and Connections, installs Plugins, starts the
-// Runtime, serves MCP over HTTP, and closes it all.
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { DatabaseSync } from "node:sqlite";
@@ -23,42 +20,21 @@ import { sqliteSessions } from "./session.js";
 import { uiRoutes } from "./ui.js";
 
 export type AppOptions = {
-  /** The App's name and version, as other Apps see them over MCP. */
   name: string;
   version: string;
-  /** The App database: a file path, or ":memory:". */
   file: string;
-  /** This App's Domains and their dependencies, built from the App database. */
   domains: Provided<DatabaseSync>[];
-  /** Domains of other Apps to install as Plugins. */
   plugins?: RemoteOptions[];
-  /** The Runtime for the agent. Without one the App has no agent. */
   runtime?: AgentRuntime;
-  /** How long a Hold waits, in milliseconds, and the clock. See createCalls. */
   holdFor?: number;
   now?: () => number;
-  /** How often to sweep (expire overdue Holds, forget old reads), in milliseconds. Defaults to one minute; 0 turns it off. */
   sweepEvery?: number;
-  /** How long records of succeeded read Calls are kept, in milliseconds. Defaults to one day. */
   keepReadsFor?: number;
-  /** The one person this App serves. Defaults to `{ id: "owner" }`. */
   owner?: Principal;
-  /**
-   * The setup secret, such as the env var KIT_SETUP_SECRET. Without one, the
-   * App makes a secret at first start and passes it to `log` once.
-   */
   setupSecret?: string;
-  /** Where the App writes its few messages. Defaults to console.log. */
   log?: (line: string) => void;
-  /**
-   * Other Apps' MCP endpoints to pair with, such as the env var KIT_CONNECT.
-   * At first start the App asks each to pair; once the person there approves,
-   * every Domain it serves is installed as a Plugin.
-   */
   connect?: string[];
-  /** A folder of static files for the App's page, served at `/`; `index.html` for `/`. */
   page?: string;
-  /** How often to claim tokens and check Plugin Contracts, in milliseconds. Defaults to 10 seconds; 0 turns it off. */
   syncEvery?: number;
 };
 
@@ -69,44 +45,19 @@ export type App = {
   connections: Connections;
   plugins: Plugin[];
   runtime: AgentRuntime | undefined;
-  /**
-   * Expires every Hold whose time has passed, and gives each Outcome to the
-   * Runtime so a waiting conversation carries on. Returns the expired Outcomes.
-   */
   sweepHolds(): Promise<Outcome[]>;
-  /**
-   * The App's sweep: expires overdue Holds, and forgets records of succeeded
-   * read Calls older than `keepReadsFor`. Runs every `sweepEvery`.
-   */
   sweep(): Promise<{ expired: number; forgotten: number }>;
-  /** Claims pairing tokens, installs approved Plugins and checks their Contract versions. */
   syncPlugins(): Promise<void>;
-  /**
-   * Makes a Call from the App itself, as its owner unless a Principal is
-   * given: for work the App does on an event or a schedule. The Caller is
-   * "app". Give an id to make a retry return the stored Outcome.
-   */
   invoke(call: {
     action: ActionName;
     input?: unknown;
     id?: string;
     principal?: Principal;
   }): Promise<Outcome>;
-  /**
-   * Runs `work` every `everyMs` milliseconds until the App closes, one run
-   * at a time. Returns a function that stops it.
-   */
   schedule(everyMs: number, work: () => unknown): () => void;
-  /** Calls `listener` with every ChangeEvent; returns a function that stops it. */
   onChange(listener: (event: ChangeEvent) => void): () => void;
-  /**
-   * Answers HTTP: `/mcp` serves this App's Domains to Connections; `/api/...`
-   * and `/events` serve the App's own page to the signed-in person.
-   */
   fetch(request: Request): Promise<Response>;
-  /** Serves `fetch` on Node's http. Port 0 picks a free port. */
   listen(port: number, host?: string): Promise<string>;
-  /** Closes the Runtime, the Plugins, the HTTP server and the database. */
   close(): Promise<void>;
 };
 
@@ -156,7 +107,6 @@ export async function createApp(options: AppOptions): Promise<App> {
     ...plugins.map((p) => pluginSource(p, calls)),
   ]);
 
-  // One server-sent event per ChangeEvent, and a comment every 15 seconds.
   const events = () => {
     let stop = () => {};
     const body = new ReadableStream<Uint8Array>({
@@ -188,7 +138,6 @@ export async function createApp(options: AppOptions): Promise<App> {
       headers: { "content-type": "text/event-stream", "cache-control": "no-store" },
     });
   };
-  // How to end each open event stream, for close().
   const streams = new Set<() => void>();
 
   const ui = uiRoutes({ calls, store, sessions, runtime: options.runtime, connections, host });
@@ -208,7 +157,6 @@ export async function createApp(options: AppOptions): Promise<App> {
       };
       const effects = Array.isArray(body.effects) ? body.effects : [];
       const valid = effects.every((e) => EFFECTS.includes(e as Effect));
-      // The name the person sees: short, and only letters, digits, spaces, dots, dashes, underscores.
       const host = typeof body.host === "string" ? body.host : "";
       if (!/^[\p{L}\p{N} ._-]{1,60}$/u.test(host) || !valid) {
         return new Response("A pairing request needs a host name and a list of Effects.", {
@@ -271,7 +219,6 @@ export async function createApp(options: AppOptions): Promise<App> {
   const syncer = syncEvery > 0 ? setInterval(() => void host.sync(), syncEvery) : undefined;
   syncer?.unref();
 
-  // Work the App does on a schedule: each timer, so that close() can stop them.
   const timers = new Set<NodeJS.Timeout>();
   const schedule = (everyMs: number, work: () => unknown) => {
     let busy = false;
@@ -335,7 +282,7 @@ export async function createApp(options: AppOptions): Promise<App> {
         http.closeAllConnections();
         await new Promise((resolve) => http?.close(resolve));
       }
-      db.close(); // an open write transaction is rolled back
+      db.close();
     },
   };
 }

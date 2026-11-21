@@ -1,8 +1,6 @@
-// Serves a fetch-shaped handler on Node's http module.
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 
-/** A Node `http` request listener that answers with `handler`. */
 export function nodeListener(handler: (request: Request) => Promise<Response>) {
   return async (req: IncomingMessage, res: ServerResponse) => {
     const headers = new Headers();

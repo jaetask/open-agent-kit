@@ -1,6 +1,3 @@
-// Two Apps on localhost. "tasks" owns the notes Domain and serves it over
-// MCP. "talk" installs it as a Plugin: its agent runs on pi-durable, its own
-// pipeline holds danger Calls where the person is, and tasks runs them.
 import type { DatabaseSync } from "node:sqlite";
 import { MemoryStorage } from "@earendil-works/pi-durable";
 import { table } from "@jaetask/snap";
@@ -43,7 +40,6 @@ export async function runApps(input: string): Promise<string> {
   const { steps } = JSON.parse(input) as { steps: Step[] };
   const now = () => Date.parse("2026-01-01T00:00:00Z");
 
-  // tasks: owns the notes, serves them over MCP.
   const tasksApp = await createApp({
     log: () => {},
     name: "tasks",
@@ -56,7 +52,6 @@ export async function runApps(input: string): Promise<string> {
   const db = tasksApp.db;
   const tasksStore = tasksApp.store;
 
-  // The person pairs talk with tasks and lets talk decide Holds.
   const pairing = await tasksApp.connections.request("talk", { id: "p1" }, [
     "read",
     "write",
@@ -65,7 +60,6 @@ export async function runApps(input: string): Promise<string> {
   const token = await tasksApp.connections.approve(pairing.id);
   const hosts = new Map([[pairing.id, "talk"]]);
 
-  // talk: installs the Plugin; its agent uses it through talk's pipeline.
   const runtime = piRuntime({ storage: new MemoryStorage(), now, ...scriptedModels(scriptPlan) });
   const talkApp = await createApp({
     log: () => {},
@@ -120,8 +114,6 @@ export async function runApps(input: string): Promise<string> {
         view.messages.map((m, k) => `${k + 1}. ${describe(m)}`).join("\n"),
       );
     }
-    // talk draws each Card from the Outcome it received over MCP. It must be
-    // the Card tasks made for the same Call.
     const drawn: string[] = [];
     for (const id of unique) {
       const here = (await talkStore.get(id))?.outcome;

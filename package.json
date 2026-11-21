@@ -59,7 +59,7 @@
     "typecheck": "tsc --noEmit && tsc -p examples/notes/page",
     "test": "tsx --test src/*.test.ts",
     "expect": "tsx expect/snap.ts",
-    "lint": "biome lint . && npm run check:docs && npm run example:guard",
+    "lint": "biome lint . && npm run check:docs && npm run example:guard && node .agents/guardrails/check-comments.mjs",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "prepare": "git config core.hooksPath .agents/guardrails/hooks || true",

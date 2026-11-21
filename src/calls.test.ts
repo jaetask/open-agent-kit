@@ -1,4 +1,3 @@
-// Layer 2 behaviour that a Call script cannot show: timing and concurrency.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { z } from "zod";
@@ -13,7 +12,6 @@ import {
   type RunContext,
 } from "./index.js";
 
-// A Domain whose one Action per Effect logs when it starts and ends.
 function timed() {
   const log: string[] = [];
   const action = (effect: Effect) =>
@@ -135,7 +133,6 @@ test("a Domain change made before run() throws is rolled back", async () => {
   assert.equal((await store.get("c1"))?.state, "failed");
 });
 
-// Never called: provide() must give a Domain the dependencies it declares.
 export function typeErrors() {
   const domain = defineDomain({
     name: "counter",

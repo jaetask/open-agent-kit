@@ -4,7 +4,6 @@ import { z } from "zod";
 export const Note = z.object({ id: z.string(), owner: z.string(), text: z.string() });
 export type Note = z.infer<typeof Note>;
 
-/** The notes repository. The Domain owns it; Kit never looks inside. */
 export type Notes = {
   list(owner: string): Note[];
   add(owner: string, text: string): Note;
@@ -13,7 +12,6 @@ export type Notes = {
 
 export type NotesDeps = { notes: Notes };
 
-/** Notes kept in memoryStore's data Map, under the keys "notes" and "notes.last". Ids are never reused. */
 export function mapNotes(data: Map<string, unknown>): Notes {
   const all = () => (data.get("notes") as Note[] | undefined) ?? [];
   return {
@@ -34,7 +32,6 @@ export function mapNotes(data: Map<string, unknown>): Notes {
   };
 }
 
-/** Notes in a table of the App's SQLite database, on the store's connection. Ids are never reused. */
 export function sqliteNotes(db: DatabaseSync): Notes {
   db.exec(
     "CREATE TABLE IF NOT EXISTS notes (seq INTEGER PRIMARY KEY AUTOINCREMENT, owner TEXT NOT NULL, text TEXT NOT NULL)",

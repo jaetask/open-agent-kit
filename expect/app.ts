@@ -1,6 +1,3 @@
-// The notes example as a running App, driven over real HTTP: the UI, a
-// Plugin Host over MCP and the agent (pi-durable with the scripted model)
-// all make Calls; the change event stream is read like a page reads it.
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -17,9 +14,9 @@ import { scriptedModels } from "./pi.js";
 import { describe, scriptPlan } from "./runtime.js";
 
 type Step =
-  | { sign_in: string } // POST /api/session with this setup secret
-  | { ui: { id: string; action: string; input: unknown } } // POST /api/calls
-  | { holds: true } // GET /api/holds
+  | { sign_in: string }
+  | { ui: { id: string; action: string; input: unknown } }
+  | { holds: true }
   | {
       raw: {
         method: string;
@@ -30,15 +27,15 @@ type Step =
         origin?: string;
       };
     }
-  | { host: { id: string; action: string; input: unknown } } // over MCP, as a paired Host
+  | { host: { id: string; action: string; input: unknown } }
   | { chat: { to: string; text: string } }
   | { decide: { to: string; call: string; decision: Decision } }
   | { restart: true }
   | { wait_days: number }
-  | { sweep: true } // the App's sweep runs once
-  | { app: { id: string; action: string; input: unknown } } // a Call the App makes itself
-  | { schedule_runs: number } // scheduled work runs this many times, then is stopped
-  | { record: string }; // what the App's store holds for a Call id
+  | { sweep: true }
+  | { app: { id: string; action: string; input: unknown } }
+  | { schedule_runs: number }
+  | { record: string };
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
 
@@ -46,7 +43,6 @@ export async function runApp(input: string): Promise<string> {
   const { steps, model, echo } = JSON.parse(input) as {
     steps: Step[];
     model?: "none";
-    /** The App answers every note someone else adds with a note of its own. */
     echo?: boolean;
   };
   const dir = mkdtempSync(join(tmpdir(), "kit-app-"));
@@ -58,7 +54,6 @@ export async function runApp(input: string): Promise<string> {
   const events: string[] = [];
   let stopEvents = () => {};
   let cookie = "";
-  // A request from the App's own page: the session cookie and the X-Kit-Request header.
   const page = (path: string, init: { method?: string; body?: unknown } = {}) =>
     fetch(`${url}${path}`, {
       method: init.method ?? "GET",
@@ -66,7 +61,6 @@ export async function runApp(input: string): Promise<string> {
       ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
     });
 
-  // Reads /events over HTTP, as a page would.
   const listen = async () => {
     if (!cookie) return;
     const response = await fetch(`${url}/events`, { headers: { cookie } });
@@ -115,12 +109,10 @@ export async function runApp(input: string): Promise<string> {
       runtime: piRuntime({
         storage,
         now,
-        // "none": the App as started with no model configured.
         ...(model === "none" ? await modelsFromEnv({}) : scriptedModels(scriptPlan)),
       }),
     });
     if (echo) {
-      // On an event: the App answers a note that it did not add itself.
       app.onChange(({ call, changes }) => {
         if (call.caller === "app") return;
         for (const change of changes) {

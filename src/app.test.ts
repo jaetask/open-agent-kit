@@ -1,4 +1,3 @@
-// The App's first start, through createApp.
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -53,7 +52,7 @@ test("a setup secret the App made works once; one from configuration keeps worki
     await made.close();
     const again = await createApp({ ...base, file: join(dir, "made.db") });
     await again.close();
-    assert.equal(said.length, 1); // no new secret after the first was used
+    assert.equal(said.length, 1);
 
     const given = await createApp({
       ...base,

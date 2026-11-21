@@ -1,14 +1,11 @@
-// Maps pi-durable's conversation view onto the Kit's ConversationView.
 import type { ConversationView as PiView } from "@earendil-works/pi-durable";
 import type { Outcome } from "../outcome.js";
 import type { ConversationView, Message } from "../runtime.js";
 import { actionName } from "../tool-name.js";
 
-/** The entry a submission is placed as: the person's text, as whom, and its RunId. */
 export const INPUT_KIND = "kit.input";
 export type InputData = { runId: string; principal: { id: string }; text: string };
 
-/** What a tool reports in its details: every Outcome its Call has had, oldest first. */
 export type CallDetails = { outcomes: Outcome[] };
 
 type ModelMessage = {
@@ -78,8 +75,6 @@ export function toView(
   const live = pi.docs["pi.live"] as
     | { run?: unknown; tools?: Slot[]; runFailure?: { reason: string; detail?: string } }
     | undefined;
-  // A run that ended without an answer says why, so the person is not left
-  // waiting; except a stop, which the person asked for.
   if (live?.runFailure && !live.run && live.runFailure.reason !== "aborted") {
     const { reason, detail } = live.runFailure;
     messages.push({

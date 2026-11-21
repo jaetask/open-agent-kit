@@ -1,5 +1,3 @@
-// Cards: an Outcome in; the CardView, its text and its HTML out. A case
-// names a Card of the notes example, or gives a CardView made elsewhere.
 import * as notes from "../examples/notes/domain.js";
 import {
   type Card,
@@ -11,7 +9,7 @@ import {
   type Json,
 } from "../src/index.js";
 
-type Input = { card: string; outcome: { output: Json; changes: Change[] } } | { view: CardView }; // a CardView from another App, maybe from a newer catalogue
+type Input = { card: string; outcome: { output: Json; changes: Change[] } } | { view: CardView };
 
 const cards: Record<string, Card> = {
   "note-list": notes.noteList,

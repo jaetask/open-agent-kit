@@ -1,36 +1,23 @@
-// The Host side of pairing: ask another App to pair, fetch the token once
-// the person there approves, install each Domain it serves as a Plugin,
-// and check the Contract's version whenever it is fetched again.
 import type { DatabaseSync } from "node:sqlite";
 import type { Effect } from "../action.js";
 import type { Plugin } from "../calls.js";
 import { remoteDomains, remoteSource } from "../mcp/client.js";
 
-/** Where pairing stands with one other App, as this Host keeps it. */
 export type PluginLink = {
-  /** The other App's MCP endpoint. */
   url: string;
-  /** The Connection id the other App gave. */
   connection: string;
   state: "pairing" | "connected" | "refused";
-  /** Per Domain: the Contract version the person approved, and a newer major version on offer. */
   domains: Record<string, { approved: string; offered?: string }>;
 };
-// The stored row also keeps the claim secret until it is used, and then the
-// token. The Host needs the token itself to call, so it is stored as given.
 type Row = PluginLink & { claim?: string; token?: string };
 
 const major = (version: string) => version.split(".")[0];
 
 export type HostPlugins = {
-  /** Asks the App at `url` to pair, once; `sync` asks again until it answers. */
   ask(url: string): Promise<void>;
-  /** Claims tokens, installs approved Domains, and checks Contract versions. */
   sync(): Promise<void>;
-  /** The Plugins installed now. */
   installed(): Plugin[];
   list(): PluginLink[];
-  /** The person accepts a newer major version of a Domain's Contract. */
   accept(domain: string): Promise<void>;
   close(): Promise<void>;
 };
@@ -41,9 +28,7 @@ export function hostPlugins(
     host: string;
     effects: Effect[];
     log: (line: string) => void;
-    /** Called when a Plugin is installed or replaced. */
     onInstall: (plugin: Plugin) => Promise<void>;
-    /** Called when a Plugin is taken out: held back by a major version, or its Connection revoked. */
     onUninstall: (plugin: Plugin) => Promise<void>;
   },
 ): HostPlugins {
@@ -88,7 +73,6 @@ export function hostPlugins(
       const known = row.domains[domain];
       const current = installed.get(domain);
       if (known && major(known.approved) !== major(contract.version)) {
-        // A breaking change: keep it out until the person accepts it.
         row.domains[domain] = { approved: known.approved, offered: contract.version };
         save(row);
         await source.close();
@@ -117,7 +101,7 @@ export function hostPlugins(
   const asking = new Set<string>();
   const sync = async () => {
     for (const url of asking) {
-      await ask(url).catch(() => undefined); // not up yet: ask again at the next sync
+      await ask(url).catch(() => undefined);
     }
     for (const row of all()) {
       try {
@@ -125,8 +109,7 @@ export function hostPlugins(
         const now = all().find((r) => r.url === row.url) as Row;
         if (now.state === "connected") await install(now);
       } catch (error) {
-        if ((error as { status?: number }).status !== 401) continue; // unreachable: try again later
-        // The other App no longer accepts the token: the Connection was revoked.
+        if ((error as { status?: number }).status !== 401) continue;
         const { token: _, ...rest } = row;
         save({ ...rest, state: "refused" });
         for (const domain of Object.keys(row.domains)) {

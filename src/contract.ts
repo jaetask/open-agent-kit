@@ -5,7 +5,6 @@ import { CARD_CATALOGUE, type CardDefinitionView } from "./card.js";
 import type { Domain } from "./domain.js";
 import type { Json } from "./outcome.js";
 
-/** A JSON Schema document. */
 export type JsonSchema = { [key: string]: Json };
 
 export type ContractAction = {
@@ -24,13 +23,8 @@ export type ContractCard = {
   view: CardDefinitionView;
 };
 
-/**
- * The versioned public description of a Domain. Generated from the Domain,
- * never written by hand. Plain JSON, so it can be served over MCP.
- */
 export type Contract = {
   domain: string;
-  /** The Card view catalogue version the Cards use. */
   catalogue: number;
   version: string;
   about: string;

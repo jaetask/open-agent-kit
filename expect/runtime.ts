@@ -1,7 +1,3 @@
-// The Runtime conformance suite. Each case in expect/runtime is a script of
-// conversations; every AgentRuntime adapter must render every case exactly
-// as approved. The model is replaced by a Plan read from the text: each line
-// `call <action> <json input>` is one Call; text with no such line gets a reply.
 import { table } from "@jaetask/snap";
 import { notesDomain } from "../examples/notes/domain.js";
 import { mapNotes, type Note } from "../examples/notes/notes.js";
@@ -18,7 +14,6 @@ import {
   provide,
 } from "../src/index.js";
 
-/** Makes the Runtime under test. Each adapter supplies one. */
 export type RuntimeFactory = (plan: Plan) => AgentRuntime;
 
 type Step =
@@ -70,9 +65,6 @@ export async function runConformance(input: string, factory: RuntimeFactory): Pr
       if (seen.at(-1) !== view.status) seen.push(view.status);
     });
   };
-  // Waits until the conversation is waiting for a Decision, stopped, or
-  // idle with every Input taken; after a Decision, only once the decided
-  // Call's final Outcome is shown.
   const settle = async (to: string, decided?: string) => {
     for (const end = Date.now() + 10_000; Date.now() < end; ) {
       await tick();

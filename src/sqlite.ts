@@ -1,6 +1,3 @@
-// The /sqlite entry point: a CallStore in the App's SQLite database, on
-// node:sqlite. Domains use the same connection, so a write's change and its
-// Outcome commit in one transaction.
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { Effect } from "./action.js";
@@ -9,7 +6,6 @@ import { CONNECTION_MACHINE, type Connection, type Connections } from "./connect
 import { next } from "./machine.js";
 import type { CallRecord, CallStore } from "./store.js";
 
-/** A CallStore in `db`. It adds one table, kit_calls. */
 export function sqliteStore(db: DatabaseSync): CallStore<DatabaseSync> {
   db.exec("CREATE TABLE IF NOT EXISTS kit_calls (id TEXT PRIMARY KEY, record TEXT NOT NULL)");
   const select = db.prepare("SELECT record FROM kit_calls WHERE id = ?");
@@ -59,15 +55,9 @@ export function sqliteStore(db: DatabaseSync): CallStore<DatabaseSync> {
 
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
-/** How long a pairing request over HTTP waits for the person, and how many may wait at once. */
 export const PAIRING_MINUTES = 10;
 export const PAIRING_LIMIT = 5;
 
-/**
- * Connections in `db`, in the table kit_connections. Tokens and claim
- * secrets are stored as SHA-256 hashes. A pairing request from `pair`
- * expires after PAIRING_MINUTES and is deleted.
- */
 export function sqliteConnections(db: DatabaseSync, now: () => number = Date.now): Connections {
   db.exec(
     "CREATE TABLE IF NOT EXISTS kit_connections (id TEXT PRIMARY KEY, record TEXT NOT NULL, token_hash TEXT UNIQUE, claim_hash TEXT, claimed INTEGER NOT NULL DEFAULT 0, expires INTEGER)",
@@ -145,7 +135,7 @@ export function sqliteConnections(db: DatabaseSync, now: () => number = Date.now
       if (connection.state === "pairing") return "waiting";
       if (connection.state !== "connected") return null;
       setClaimed.run(id);
-      return mint(id); // replaces the token approve() made, which nobody has seen
+      return mint(id);
     },
     list: async () => {
       tidy();

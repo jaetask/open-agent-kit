@@ -1,7 +1,3 @@
-# Two notes Apps paired together. "talk" asks "tasks" to pair at first
-# start; approve it on tasks' page (http://localhost:3120), and talk's agent
-# (http://localhost:3121) can then use tasks' notes. Run from the repository root:
-#   docker compose -f examples/notes/compose.pair.yaml up --build
 services:
   tasks:
     build:

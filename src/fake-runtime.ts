@@ -8,29 +8,20 @@ import type {
   Input,
 } from "./runtime.js";
 
-/** The Calls an agent would make for one Input, in order. Stands in for a model. */
 export type Plan = (input: Input) => { action: ActionName; input: unknown }[];
 
 type Conversation = {
   view: ConversationView;
   watchers: Set<(view: ConversationView) => void>;
   runs: number;
-  /** Inputs submitted and not yet started. */
   queued: number;
   queue: Promise<void>;
 };
 
-/**
- * A Runtime with no model: each Input becomes the Calls `plan` returns, run
- * in order. It keeps everything in memory. Tests and the conformance suite
- * run on it.
- */
 export function fakeRuntime(plan: Plan): AgentRuntime {
   const sources = new Map<ActionName, ActionSource>();
   const conversations = new Map<ConversationId, Conversation>();
-  // The conversation of every Call held here.
   const heldIn = new Map<CallId, ConversationId>();
-  // Held Calls, waiting for resume().
   const waiting = new Map<CallId, { to: ConversationId; resolve: (outcome: Outcome) => void }>();
 
   const open = (id: ConversationId): Conversation => {
@@ -43,7 +34,6 @@ export function fakeRuntime(plan: Plan): AgentRuntime {
     return c;
   };
 
-  // A function, so the check is not narrowed away across an await.
   const stopped = (c: Conversation) => c.view.status === "stopped";
 
   const show = (c: Conversation) => {
@@ -90,7 +80,6 @@ export function fakeRuntime(plan: Plan): AgentRuntime {
     }
     const text = steps.length === 0 ? `You said: ${input.text}` : "Done.";
     c.view.messages.push({ from: "agent", text });
-    // A queued Input starts in the same step this run ends, as in a durable Runtime.
     if (c.queued === 0) c.view.status = "idle";
     show(c);
   };
@@ -133,7 +122,6 @@ export function fakeRuntime(plan: Plan): AgentRuntime {
       const c = open(to);
       c.view.status = "stopped";
       show(c);
-      // Let any held Call return; the conversation ignores its Outcome.
       for (const [id, held] of waiting) {
         if (held.to !== to) continue;
         waiting.delete(id);

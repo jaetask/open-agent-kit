@@ -1,9 +1,3 @@
-# One notes App. Run from the repository root:
-#   docker compose -f examples/notes/compose.yaml up --build
-# The setup secret is printed once in the log at first start:
-#   docker compose -f examples/notes/compose.yaml logs notes
-# The model comes from the environment: KIT_MODEL with its provider's key,
-# or KIT_OPENAI_BASE_URL for an OpenAI-compatible server.
 services:
   notes:
     build:

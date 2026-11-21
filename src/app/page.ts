@@ -1,4 +1,3 @@
-// Static files for the App's page, from one folder, never outside it.
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize, sep } from "node:path";
 
@@ -24,8 +23,6 @@ export async function staticFile(dir: string, pathname: string): Promise<Respons
         "content-type": type,
         "cache-control": "no-cache",
         "x-content-type-options": "nosniff",
-        // Inline styles are allowed: the toolkit's menus, selects and tooltips place themselves
-        // with them. Scripts stay limited to the App's own files.
         "content-security-policy":
           "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
       },

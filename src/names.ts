@@ -1,6 +1,3 @@
-// Checks shared by the define functions. Each throws an Error whose message
-// names the definition and says what is wrong.
-
 const KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 

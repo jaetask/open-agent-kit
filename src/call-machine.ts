@@ -31,7 +31,6 @@ export type CallEvent =
   | "CRASH"
   | "RESUME";
 
-/** The life of every Call. The pipeline is its only driver. */
 export const CALL_MACHINE: MachineDefinition<CallState, CallEvent> = {
   initial: "received",
   states: {

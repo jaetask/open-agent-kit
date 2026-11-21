@@ -10,16 +10,13 @@ import { actionName, toolName } from "../tool-name.js";
 import { CALL_ID, contractUri, DECISION } from "./meta.js";
 
 export type McpServeOptions = {
-  /** The Domains this App serves. */
   domains: Domain[];
   calls: Calls;
   connections: Pick<Connections, "find">;
-  /** The server's name and version, as MCP clients see them. */
   name: string;
   version: string;
 };
 
-/** A one-line summary of an Outcome, for clients that read only text. */
 export function outcomeText(outcome: Outcome): string {
   switch (outcome.state) {
     case "succeeded":
@@ -37,15 +34,8 @@ const unauthorised = () =>
     headers: { "content-type": "application/json", "www-authenticate": "Bearer" },
   });
 
-/**
- * Serves Domains over MCP streamable HTTP, as a fetch-shaped handler. Every
- * request needs a connected Connection's bearer token; the Connection, not
- * the client, decides the Principal and which Effects may run.
- */
 export function mcpServer(options: McpServeOptions): (request: Request) => Promise<Response> {
   const contracts = options.domains.map((d) => contractOf(d));
-  // Whether a Connection may use an Action: its Effect is in the Connection's
-  // scope, and the Action's Domain allows the Connection's Principal.
   const allowed = (connection: Connection, name: string) => {
     for (const domain of options.domains) {
       const action = domain.actions.find((a) => `${domain.name}.${a.name}` === name);
@@ -107,7 +97,6 @@ export function mcpServer(options: McpServeOptions): (request: Request) => Promi
           caller: "plugin",
           connection: connection.id,
         };
-        // Only a Connection with danger in scope reaches here for danger.
         const decision = effect === "danger" && meta[DECISION] === "yes" ? "yes" : undefined;
         outcome = await options.calls.invoke(call, decision);
       }

@@ -1,4 +1,3 @@
-/* The notes page's CSS entry: Tailwind, the toolkit's styles and theme, then the page's own. */
 @import "tailwindcss";
 @import "@jaetask/toolkit/styles.css";
 @import "./page.css";
