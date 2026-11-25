@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { agentContext } from "../agent-context.js";
 import type { Principal } from "../call.js";
 import {
+  CHAT_MODELS,
   type ChatSettings,
   type ChatStep,
   type ChatStore,
@@ -82,6 +83,11 @@ const textOf = (reply: Reply) =>
     .filter((b): b is Anthropic.Beta.Messages.BetaTextBlock => b.type === "text")
     .map((b) => b.text)
     .join("");
+
+export const modelLine = ({ model, effort }: ChatSettings) => {
+  const label = CHAT_MODELS.find((m) => m.id === model)?.label;
+  return `You are Claude ${label ?? model} (model id ${model}), running at ${effort} effort.`;
+};
 
 const summaryOf = (outcome: Outcome) =>
   outcome.state === "succeeded"
@@ -164,7 +170,11 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
     });
     const last = tools.at(-1);
     if (last) last.cache_control = { type: "ephemeral" };
-    const system = [options.guidance, agentContext({ ...contract, actions })].join("\n\n");
+    const system = [
+      options.guidance,
+      modelLine(options.settings()),
+      agentContext({ ...contract, actions }),
+    ].join("\n\n");
     return { tools, system };
   };
 
