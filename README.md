@@ -74,7 +74,7 @@ The `/mcp` and `/app` entry points also need `@modelcontextprotocol/server` and 
 
 ## Chat with Claude
 
-`/claude` gives an App a chat per subject (an article, a note) with Claude over the Anthropic API. `claudeAgent` turns the App's Actions into tools; every tool call goes through the Call pipeline with caller `agent`. A `ChatStore` (`memoryChats`, or `sqliteChats` from `/sqlite`) keeps each subject's turns, the model history, and for every model call the model, effort, timing, tokens and cost. `task` runs a one-off model call, such as a grade, and records its cost against the subject. `CHAT_MODELS` holds the price per million tokens for each model; `spend` sums cost by subject and since a date.
+`/claude` gives an App a chat per subject (an article, a note) with Claude over the Anthropic API. `claudeAgent` turns the App's Actions into tools; every tool call goes through the Call pipeline with caller `agent`. A `ChatStore` (`memoryChats`, or `sqliteChats` from `/sqlite`) keeps each subject's turns, the model history, and for every model call the model, effort, timing, tokens and cost. `task` runs a one-off model call, such as a grade, and records its cost against the subject. `CHAT_MODELS` holds each model's efforts and its price per million tokens from Anthropic's pricing page, and each request is shaped for the model it goes to; `spend` sums cost by subject, by model and since a date. `modelCatalogue` reads the models the key can use from the Anthropic Models API, keeps the list for a day and uses the built-in list when the API cannot be read.
 
 ## Develop
 

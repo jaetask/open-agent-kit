@@ -17,6 +17,7 @@
 | EFFECTS |
 | EFFORTS |
 | Refusal |
+| TOP_MODELS |
 | agentContext |
 | cardHtml |
 | cardText |
@@ -32,6 +33,7 @@
 | localSource |
 | memoryChats |
 | memoryStore |
+| modelOf |
 | monthStart |
 | pluginSource |
 | provide |
