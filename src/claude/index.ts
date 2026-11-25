@@ -87,6 +87,16 @@ const textOf = (reply: Reply) =>
     .map((b) => b.text)
     .join("");
 
+export function summaryOfProblem(error: unknown): string {
+  if (error instanceof NoKey) return error.message;
+  if (error instanceof Anthropic.APIError) {
+    if (error.status === 429) return "Claude is busy right now. Try again in a minute.";
+    if (error.status && error.status >= 500) return "Claude had a problem on its side. Try again.";
+    return "Claude could not answer that message.";
+  }
+  return "Claude could not answer that message.";
+}
+
 export function problemOf(error: unknown): string {
   if (error instanceof Anthropic.APIError) {
     const body = error.error as { error?: { message?: string } } | undefined;
@@ -407,7 +417,8 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
         reply.status = "done";
       } catch (error) {
         reply.status = "failed";
-        reply.text += `${reply.text ? "\n\n" : ""}${problemOf(error)}`;
+        reply.text += `${reply.text ? "\n\n" : ""}${summaryOfProblem(error)}`;
+        reply.error = problemOf(error);
       } finally {
         running.delete(subject);
         await save(reply);
