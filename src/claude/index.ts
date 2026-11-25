@@ -200,6 +200,18 @@ export function modelCatalogue(options: {
   };
 }
 
+export function forModel(messages: MessageParam[], id: string): MessageParam[] {
+  if (modelOf(id)?.systemMessages) return messages;
+  return messages.map((m) =>
+    (m.role as string) === "system"
+      ? {
+          role: "user",
+          content: `Note from the app: ${typeof m.content === "string" ? m.content : ""}`,
+        }
+      : m,
+  );
+}
+
 export const modelLine = ({ model, effort }: ChatSettings) => {
   const label = CHAT_MODELS.find((m) => m.id === model)?.label;
   return `You are Claude ${label ?? model} (model id ${model}), running at ${effort} effort.`;
@@ -324,8 +336,13 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
     const { tools, system } = await toolsOf();
     const history = (await options.store.history(subject)) as unknown as MessageParam[];
     const context = options.context ? await options.context(subject) : "";
-    const said = [modelLine(options.settings()), context, text].filter(Boolean).join("\n\n");
-    const messages: MessageParam[] = [...history, { role: "user", content: said }];
+    const settings = options.settings();
+    const said = [context, text].filter(Boolean).join("\n\n");
+    const messages: MessageParam[] = [
+      ...history,
+      { role: "user", content: said },
+      { role: "system", content: modelLine(settings) },
+    ];
     for (let round = 0; round < MAX_ROUNDS; round += 1) {
       const before = reply.text;
       const answer = await ask(
@@ -333,7 +350,7 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
         {
           system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
           tools,
-          messages,
+          messages: forModel(messages, options.settings().model),
           cache_control: { type: "ephemeral" },
         },
         (delta) => {
