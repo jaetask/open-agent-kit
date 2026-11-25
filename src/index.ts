@@ -6,6 +6,29 @@ export type { CallEvent, CallState } from "./call-machine.js";
 export { CALL_MACHINE } from "./call-machine.js";
 export type { Calls, CallsOptions, ChangeEvent, Plugin, Provided } from "./calls.js";
 export { createCalls, provide } from "./calls.js";
+export type {
+  ChatModel,
+  ChatSettings,
+  ChatStep,
+  ChatStore,
+  ChatTurn,
+  Effort,
+  ModelStep,
+  Spend,
+  SpendQuery,
+  Tokens,
+  ToolStep,
+  TurnRole,
+} from "./chat.js";
+export {
+  CHAT_MODELS,
+  costOf,
+  DEFAULT_CHAT_SETTINGS,
+  EFFORTS,
+  memoryChats,
+  monthStart,
+  spendOf,
+} from "./chat.js";
 export type { Card, CardDefinitionView, CardView } from "./card.js";
 export {
   CARD_CATALOGUE,

@@ -1,6 +1,6 @@
 {
   "name": "@jaetask/open-agent-kit",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A small kit for standalone apps that each carry their own agent and join together over MCP.",
   "keywords": [
     "agent",
@@ -45,6 +45,10 @@
     "./app": {
       "types": "./dist/app/index.d.ts",
       "import": "./dist/app/index.js"
+    },
+    "./claude": {
+      "types": "./dist/claude/index.d.ts",
+      "import": "./dist/claude/index.js"
     }
   },
   "publishConfig": {
@@ -71,6 +75,7 @@
     "prepublishOnly": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run expect && npm run build"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "1.14.0",
     "@biomejs/biome": "2.6.5",
     "@earendil-works/chord": "1.5.2",
     "@earendil-works/pi-ai": "1.5.2",
@@ -99,7 +104,8 @@
     "@earendil-works/pi-ai": "1.5.2",
     "@earendil-works/pi-durable": "1.5.2",
     "@modelcontextprotocol/client": "2.4.0",
-    "@modelcontextprotocol/server": "2.4.0"
+    "@modelcontextprotocol/server": "2.4.0",
+    "@anthropic-ai/sdk": "1.14.0"
   },
   "peerDependenciesMeta": {
     "@earendil-works/chord": {
@@ -115,6 +121,9 @@
       "optional": true
     },
     "@modelcontextprotocol/server": {
+      "optional": true
+    },
+    "@anthropic-ai/sdk": {
       "optional": true
     }
   }

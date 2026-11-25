@@ -26,6 +26,10 @@
               {
                 "group": ["@modelcontextprotocol/*", "@modelcontextprotocol/*/**"],
                 "message": "Only the /mcp entry point (src/mcp) may import the MCP SDK."
+              },
+              {
+                "group": ["@anthropic-ai/*", "@anthropic-ai/*/**"],
+                "message": "Only the /claude entry point (src/claude) may import the Anthropic SDK."
               }
             ]
           }
@@ -38,6 +42,7 @@
       "includes": [
         "src/pi/**",
         "src/mcp/**",
+        "src/claude/**",
         "expect/pi*.ts",
         "expect/mcp*.ts",
         "expect/apps.ts",
