@@ -112,6 +112,11 @@ test("a message runs the Action as a tool and records each model call's tokens a
     "notes__add",
   );
   assert.deepEqual(seen[0]?.messages, [{ role: "user", content: "Subject: n1\n\nRemember milk" }]);
+  const system = JSON.stringify(seen[0]?.system);
+  assert.match(
+    system,
+    /You are Claude Opus 5\.5 \(model id claude-opus-5-5\), running at medium effort\./,
+  );
   const spend = await store.spend({ subject: "n1" });
   assert.equal(spend.calls, 2);
   assert.equal(spend.tokens.input, 2500);
