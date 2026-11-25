@@ -227,6 +227,16 @@ test("each model gets the request shape it accepts", () => {
     output_config: { effort: "high" },
   });
   assert.deepEqual(requestFor("claude-haiku-4-5", "medium"), {});
+  assert.deepEqual(requestFor("claude-haiku-4-5-20251001", "medium"), {});
+  assert.equal(
+    costOf("claude-haiku-4-5-20251001", {
+      input: 1_000_000,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+    }),
+    1,
+  );
 });
 
 test("the model catalogue keeps the built-in list until a sync, then orders the API's list", async () => {

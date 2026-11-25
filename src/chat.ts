@@ -75,11 +75,20 @@ export const CHAT_MODELS: ChatModel[] = [
   model("claude-opus-4-7", "Opus 4.7", price(5, 25, 0.5, 6.25)),
   model("claude-opus-4-6", "Opus 4.6", price(5, 25, 0.5, 6.25), { efforts: NO_XHIGH }),
   model("claude-sonnet-4-6", "Sonnet 4.6", price(3, 15, 0.3, 3.75), { efforts: NO_XHIGH }),
+  model("claude-opus-4-5", "Opus 4.5", price(5, 25, 0.5, 6.25), {
+    efforts: ["low", "medium", "high"],
+    adaptive: false,
+  }),
 ];
 
 export const TOP_MODELS = CHAT_MODELS.slice(0, 4).map((m) => m.id);
 
-export const modelOf = (id: string): ChatModel | undefined => CHAT_MODELS.find((m) => m.id === id);
+const SNAPSHOT = /^(.+)-\d{8}$/;
+
+export const baseIdOf = (id: string): string => SNAPSHOT.exec(id)?.[1] ?? id;
+
+export const modelOf = (id: string): ChatModel | undefined =>
+  CHAT_MODELS.find((m) => m.id === id) ?? CHAT_MODELS.find((m) => m.id === baseIdOf(id));
 
 export const DEFAULT_CHAT_SETTINGS = { model: "claude-opus-5-5", effort: "medium" as Effort };
 export type ChatSettings = { model: string; effort: Effort };
