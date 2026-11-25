@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 import { z } from "zod";
-import { claudeAgent, NoKey, type Speak } from "./claude/index.js";
+import {
+  claudeAgent,
+  MODELS_KEPT_FOR,
+  modelCatalogue,
+  NoKey,
+  requestFor,
+  type Speak,
+} from "./claude/index.js";
 import {
   costOf,
   createCalls,
@@ -78,7 +85,11 @@ const endTurn = {
 test("costOf prices tokens by model and gives 0 for an unknown model", () => {
   const tokens = { input: 1_000_000, output: 1_000_000, cacheRead: 1_000_000, cacheWrite: 0 };
   assert.equal(costOf("claude-opus-5-5", tokens), 24.2);
-  assert.equal(costOf("someone-else", tokens), 0);
+  assert.equal(costOf("someone-else", tokens), null);
+  assert.equal(
+    costOf("claude-haiku-5-5", { input: 200_000, output: 0, cacheRead: 0, cacheWrite: 0 }),
+    0.1,
+  );
 });
 
 test("a message runs the Action as a tool and records each model call's tokens and cost", async () => {
@@ -126,7 +137,8 @@ test("a message runs the Action as a tool and records each model call's tokens a
   const spend = await store.spend({ subject: "n1" });
   assert.equal(spend.calls, 2);
   assert.equal(spend.tokens.input, 2500);
-  assert.ok(Math.abs(spend.cost - costOf("claude-opus-5-5", spend.tokens)) < 1e-12);
+  assert.ok(Math.abs(spend.cost - (costOf("claude-opus-5-5", spend.tokens) ?? -1)) < 1e-12);
+  assert.equal(spend.byModel["claude-opus-5-5"]?.calls, 2);
   assert.equal((await store.history("n1")).length, 4);
 });
 
@@ -187,6 +199,68 @@ test("the reply text comes from the final message when nothing streamed", async 
     speak: silent,
   });
   assert.equal((await agent.send("n1", "hi")).text, "Done.");
+});
+
+test("each model gets the request shape it accepts", () => {
+  assert.deepEqual(requestFor("claude-opus-5-5", "medium"), {
+    thinking: { type: "adaptive", block_binding: { prefix_mismatch_behavior: "drop_block" } },
+    output_config: { effort: "medium" },
+    betas: ["server-side-fallback-2026-07-01", "thinking-binding-controls-2026-08-01"],
+    fallbacks: "default",
+  });
+  assert.deepEqual(requestFor("claude-opus-4-8", "high"), {
+    thinking: { type: "adaptive" },
+    output_config: { effort: "high" },
+  });
+  assert.deepEqual(requestFor("claude-haiku-4-5", "medium"), {});
+});
+
+test("the model catalogue keeps the built-in list until a sync, then orders the API's list", async () => {
+  let calls = 0;
+  let clock = 0;
+  const catalogue = modelCatalogue({
+    key: () => "k",
+    now: () => clock,
+    listModels: async () => {
+      calls += 1;
+      return [
+        {
+          id: "claude-new-9",
+          label: "New 9",
+          releasedAt: "2027-01-01T00:00:00Z",
+          contextWindow: 1,
+          maxOutput: 1,
+        },
+        {
+          id: "claude-fable-5-2",
+          label: "Fable 5.2",
+          releasedAt: "2026-11-01T00:00:00Z",
+          contextWindow: 1_000_000,
+          maxOutput: 128_000,
+        },
+        {
+          id: "claude-opus-5-5",
+          label: "Opus 5.5",
+          releasedAt: "2026-09-01T00:00:00Z",
+          contextWindow: 1_000_000,
+          maxOutput: 128_000,
+        },
+      ];
+    },
+  });
+  assert.equal(catalogue.list()[0]?.id, "claude-opus-5-5");
+  assert.equal(catalogue.syncedAt(), null);
+  await catalogue.refresh();
+  assert.deepEqual(
+    catalogue.list().map((m) => m.id),
+    ["claude-opus-5-5", "claude-fable-5-2", "claude-new-9"],
+  );
+  clock = 1000;
+  await catalogue.refresh();
+  assert.equal(calls, 1);
+  clock = MODELS_KEPT_FOR + 1;
+  await catalogue.refresh();
+  assert.equal(calls, 2);
 });
 
 test("with no key, send refuses before anything is stored", async () => {
