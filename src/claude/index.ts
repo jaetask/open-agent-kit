@@ -31,6 +31,7 @@ export type Speak = (
 ) => Promise<Reply>;
 
 export const FALLBACK_BETA = "server-side-fallback-2026-07-01";
+export const THINKING_BINDING_BETA = "thinking-binding-controls-2026-08-01";
 export const MAX_TOKENS = 64_000;
 export const MAX_ROUNDS = 25;
 
@@ -84,6 +85,14 @@ const textOf = (reply: Reply) =>
     .map((b) => b.text)
     .join("");
 
+export function problemOf(error: unknown): string {
+  if (error instanceof Anthropic.APIError) {
+    const body = error.error as { error?: { message?: string } } | undefined;
+    return `Claude could not answer (${error.status ?? "no status"}): ${body?.error?.message ?? error.message}`;
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
 export const modelLine = ({ model, effort }: ChatSettings) => {
   const label = CHAT_MODELS.find((m) => m.id === model)?.label;
   return `You are Claude ${label ?? model} (model id ${model}), running at ${effort} effort.`;
@@ -135,9 +144,9 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
         ...params,
         model,
         max_tokens: MAX_TOKENS,
-        thinking: { type: "adaptive" },
+        thinking: { type: "adaptive", block_binding: { prefix_mismatch_behavior: "drop_block" } },
         output_config: { effort },
-        betas: [FALLBACK_BETA],
+        betas: [FALLBACK_BETA, THINKING_BINDING_BETA],
         fallbacks: "default",
       },
       onText,
@@ -170,11 +179,7 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
     });
     const last = tools.at(-1);
     if (last) last.cache_control = { type: "ephemeral" };
-    const system = [
-      options.guidance,
-      modelLine(options.settings()),
-      agentContext({ ...contract, actions }),
-    ].join("\n\n");
+    const system = [options.guidance, agentContext({ ...contract, actions })].join("\n\n");
     return { tools, system };
   };
 
@@ -213,7 +218,7 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
     const { tools, system } = await toolsOf();
     const history = (await options.store.history(subject)) as unknown as MessageParam[];
     const context = options.context ? await options.context(subject) : "";
-    const said = [context, text].filter(Boolean).join("\n\n");
+    const said = [modelLine(options.settings()), context, text].filter(Boolean).join("\n\n");
     const messages: MessageParam[] = [...history, { role: "user", content: said }];
     for (let round = 0; round < MAX_ROUNDS; round += 1) {
       const before = reply.text;
@@ -279,7 +284,7 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
         reply.status = "done";
       } catch (error) {
         reply.status = "failed";
-        reply.text += `${reply.text ? "\n\n" : ""}${error instanceof Error ? error.message : String(error)}`;
+        reply.text += `${reply.text ? "\n\n" : ""}${problemOf(error)}`;
       } finally {
         running.delete(subject);
         await save(reply);

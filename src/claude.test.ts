@@ -111,12 +111,18 @@ test("a message runs the Action as a tool and records each model call's tokens a
     seen[0]?.tools?.[0] && "name" in seen[0].tools[0] && seen[0].tools[0].name,
     "notes__add",
   );
-  assert.deepEqual(seen[0]?.messages, [{ role: "user", content: "Subject: n1\n\nRemember milk" }]);
-  const system = JSON.stringify(seen[0]?.system);
-  assert.match(
-    system,
-    /You are Claude Opus 5\.5 \(model id claude-opus-5-5\), running at medium effort\./,
-  );
+  assert.deepEqual(seen[0]?.messages, [
+    {
+      role: "user",
+      content:
+        "You are Claude Opus 5.5 (model id claude-opus-5-5), running at medium effort.\n\nSubject: n1\n\nRemember milk",
+    },
+  ]);
+  assert.doesNotMatch(JSON.stringify(seen[0]?.system), /running at/);
+  assert.deepEqual(seen[0]?.thinking, {
+    type: "adaptive",
+    block_binding: { prefix_mismatch_behavior: "drop_block" },
+  });
   const spend = await store.spend({ subject: "n1" });
   assert.equal(spend.calls, 2);
   assert.equal(spend.tokens.input, 2500);
@@ -124,13 +130,14 @@ test("a message runs the Action as a tool and records each model call's tokens a
   assert.equal((await store.history("n1")).length, 4);
 });
 
-test("the next message replays the stored history unchanged", async () => {
+test("the next message replays the stored history unchanged, and the system prompt stays the same when the model changes", async () => {
   const { source } = notes();
   const store = memoryChats();
   const { speak, seen } = scripted([endTurn, endTurn]);
+  let settings = DEFAULT_CHAT_SETTINGS;
   const agent = claudeAgent({
     key: () => "k",
-    settings: () => DEFAULT_CHAT_SETTINGS,
+    settings: () => settings,
     store,
     source,
     principal: { id: "p1" },
@@ -138,7 +145,9 @@ test("the next message replays the stored history unchanged", async () => {
     speak,
   });
   await agent.send("n1", "one");
+  settings = { model: "claude-sonnet-5-5", effort: "high" };
   await agent.send("n1", "two");
+  assert.deepEqual(seen[1]?.system, seen[0]?.system);
   assert.equal(seen[1]?.messages.length, 3);
   assert.deepEqual(seen[1]?.messages[1], { role: "assistant", content: endTurn.content });
 });
