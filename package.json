@@ -66,7 +66,7 @@
     "lint": "biome lint . && npm run check:docs && npm run example:guard && node .agents/guardrails/check-comments.mjs",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "prepare": "git config core.hooksPath .agents/guardrails/hooks || true",
+    "prepare": "npm run build && (git config core.hooksPath .agents/guardrails/hooks || true)",
     "check:docs": "node scripts/check-docs.mjs",
     "example": "node examples/notes/build.mjs && tsx examples/notes/app.ts",
     "example:build": "node examples/notes/build.mjs",
