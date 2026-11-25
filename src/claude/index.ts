@@ -12,6 +12,7 @@ import {
   type Effort,
   type ModelStep,
   modelOf,
+  baseIdOf,
   type Tokens,
   type ToolStep,
 } from "../chat.js";
@@ -182,7 +183,7 @@ export function modelCatalogue(options: {
   let synced: number | null = null;
   const order = (found: ModelInfo[]) => {
     const rank = (id: string) => {
-      const at = CHAT_MODELS.findIndex((m) => m.id === id);
+      const at = CHAT_MODELS.findIndex((m) => m.id === baseIdOf(id));
       return at < 0 ? CHAT_MODELS.length : at;
     };
     return [...found].sort(

@@ -27,6 +27,7 @@ export {
   costOf,
   DEFAULT_CHAT_SETTINGS,
   EFFORTS,
+  baseIdOf,
   memoryChats,
   modelOf,
   monthStart,
