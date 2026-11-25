@@ -206,6 +206,7 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
     const said = [context, text].filter(Boolean).join("\n\n");
     const messages: MessageParam[] = [...history, { role: "user", content: said }];
     for (let round = 0; round < MAX_ROUNDS; round += 1) {
+      const before = reply.text;
       const answer = await ask(
         reply,
         {
@@ -218,6 +219,7 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
           reply.text += delta;
         },
       );
+      reply.text = before + textOf(answer);
       messages.push({ role: "assistant", content: answer.content });
       if (answer.stop_reason !== "tool_use") {
         await options.store.setHistory(subject, messages as unknown as Json[]);
