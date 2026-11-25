@@ -3,13 +3,15 @@ import Anthropic from "@anthropic-ai/sdk";
 import { agentContext } from "../agent-context.js";
 import type { Principal } from "../call.js";
 import {
-  CHAT_MODELS,
   type ChatSettings,
   type ChatStep,
   type ChatStore,
   type ChatTurn,
   costOf,
+  CHAT_MODELS,
+  type Effort,
   type ModelStep,
+  modelOf,
   type Tokens,
   type ToolStep,
 } from "../chat.js";
@@ -93,6 +95,123 @@ export function problemOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+export function requestFor(id: string, effort: Effort) {
+  const known = modelOf(id);
+  const betas = [
+    ...(known?.fallback ? [FALLBACK_BETA] : []),
+    ...(known?.dropMismatchedThinking ? [THINKING_BINDING_BETA] : []),
+  ];
+  return {
+    ...(known?.adaptive === false
+      ? {}
+      : {
+          thinking: known?.dropMismatchedThinking
+            ? {
+                type: "adaptive" as const,
+                block_binding: { prefix_mismatch_behavior: "drop_block" as const },
+              }
+            : { type: "adaptive" as const },
+        }),
+    ...(known && known.efforts.length === 0 ? {} : { output_config: { effort } }),
+    ...(betas.length ? { betas } : {}),
+    ...(known?.fallback ? { fallbacks: "default" as const } : {}),
+  };
+}
+
+export type ModelInfo = {
+  id: string;
+  label: string;
+  releasedAt: string;
+  contextWindow: number | null;
+  maxOutput: number | null;
+};
+
+export type ListModels = (key: string) => Promise<ModelInfo[]>;
+
+export const anthropicModels: ListModels = async (key) => {
+  const found: ModelInfo[] = [];
+  for await (const m of new Anthropic({ apiKey: key }).models.list({ limit: 100 })) {
+    const extra = m as unknown as { max_input_tokens?: number; max_tokens?: number };
+    found.push({
+      id: m.id,
+      label: m.display_name.replace(/^Claude /, ""),
+      releasedAt: m.created_at,
+      contextWindow: extra.max_input_tokens ?? null,
+      maxOutput: extra.max_tokens ?? null,
+    });
+  }
+  return found;
+};
+
+export const MODELS_KEPT_FOR = 24 * 60 * 60 * 1000;
+
+export type ModelCatalogue = {
+  list(): ModelInfo[];
+  syncedAt(): string | null;
+  sync(): Promise<ModelInfo[]>;
+  refresh(): Promise<void>;
+};
+
+const builtIn = (): ModelInfo[] =>
+  CHAT_MODELS.map((m) => ({
+    id: m.id,
+    label: m.label,
+    releasedAt: "",
+    contextWindow: null,
+    maxOutput: null,
+  }));
+
+export function modelCatalogue(options: {
+  key: () => string | null;
+  listModels?: ListModels;
+  now?: () => number;
+}): ModelCatalogue {
+  const now = options.now ?? Date.now;
+  const listModels = options.listModels ?? anthropicModels;
+  let models = builtIn();
+  let synced: number | null = null;
+  const order = (found: ModelInfo[]) => {
+    const rank = (id: string) => {
+      const at = CHAT_MODELS.findIndex((m) => m.id === id);
+      return at < 0 ? CHAT_MODELS.length : at;
+    };
+    return [...found].sort(
+      (a, b) => rank(a.id) - rank(b.id) || b.releasedAt.localeCompare(a.releasedAt),
+    );
+  };
+  const sync = async () => {
+    const key = options.key();
+    if (!key) return models;
+    const found = await listModels(key);
+    if (found.length) {
+      models = order(found);
+      synced = now();
+    }
+    return models;
+  };
+  return {
+    list: () => models,
+    syncedAt: () => (synced === null ? null : new Date(synced).toISOString()),
+    sync,
+    refresh: async () => {
+      if (synced !== null && now() - synced < MODELS_KEPT_FOR) return;
+      await sync().catch(() => undefined);
+    },
+  };
+}
+
+export function forModel(messages: MessageParam[], id: string): MessageParam[] {
+  if (modelOf(id)?.systemMessages) return messages;
+  return messages.map((m) =>
+    (m.role as string) === "system"
+      ? {
+          role: "user",
+          content: `Note from the app: ${typeof m.content === "string" ? m.content : ""}`,
+        }
+      : m,
+  );
+}
+
 export const modelLine = ({ model, effort }: ChatSettings) => {
   const label = CHAT_MODELS.find((m) => m.id === model)?.label;
   return `You are Claude ${label ?? model} (model id ${model}), running at ${effort} effort.`;
@@ -144,14 +263,12 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
         ...params,
         model,
         max_tokens: MAX_TOKENS,
-        thinking: { type: "adaptive", block_binding: { prefix_mismatch_behavior: "drop_block" } },
-        output_config: { effort },
-        betas: [FALLBACK_BETA, THINKING_BINDING_BETA],
-        fallbacks: "default",
+        ...requestFor(model, effort),
       },
       onText,
     );
     const tokens = tokensOf(reply.usage);
+    const cost = costOf(reply.model, tokens);
     const step: ModelStep = {
       kind: "model",
       model: reply.model,
@@ -159,7 +276,8 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
       at,
       ms: Date.now() - started,
       tokens,
-      cost: costOf(reply.model, tokens),
+      cost: cost ?? 0,
+      priced: cost !== null,
       stop: reply.stop_reason ?? "",
     };
     turn.steps.push(step);
@@ -218,8 +336,13 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
     const { tools, system } = await toolsOf();
     const history = (await options.store.history(subject)) as unknown as MessageParam[];
     const context = options.context ? await options.context(subject) : "";
-    const said = [modelLine(options.settings()), context, text].filter(Boolean).join("\n\n");
-    const messages: MessageParam[] = [...history, { role: "user", content: said }];
+    const settings = options.settings();
+    const said = [context, text].filter(Boolean).join("\n\n");
+    const messages: MessageParam[] = [
+      ...history,
+      { role: "user", content: said },
+      { role: "system", content: modelLine(settings) },
+    ];
     for (let round = 0; round < MAX_ROUNDS; round += 1) {
       const before = reply.text;
       const answer = await ask(
@@ -227,7 +350,7 @@ export function claudeAgent(options: ClaudeAgentOptions): ClaudeAgent {
         {
           system: [{ type: "text", text: system, cache_control: { type: "ephemeral" } }],
           tools,
-          messages,
+          messages: forModel(messages, options.settings().model),
           cache_control: { type: "ephemeral" },
         },
         (delta) => {

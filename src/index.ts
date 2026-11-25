@@ -13,7 +13,9 @@ export type {
   ChatStore,
   ChatTurn,
   Effort,
+  ModelSpend,
   ModelStep,
+  Price,
   Spend,
   SpendQuery,
   Tokens,
@@ -26,8 +28,10 @@ export {
   DEFAULT_CHAT_SETTINGS,
   EFFORTS,
   memoryChats,
+  modelOf,
   monthStart,
   spendOf,
+  TOP_MODELS,
 } from "./chat.js";
 export type { Card, CardDefinitionView, CardView } from "./card.js";
 export {
