@@ -160,6 +160,21 @@ test("a task records its cost against the subject as a task turn", async () => {
   assert.equal((await store.spend()).calls, 1);
 });
 
+test("the reply text comes from the final message when nothing streamed", async () => {
+  const { source } = notes();
+  const silent: Speak = async () => endTurn as Awaited<ReturnType<Speak>>;
+  const agent = claudeAgent({
+    key: () => "k",
+    settings: () => DEFAULT_CHAT_SETTINGS,
+    store: memoryChats(),
+    source,
+    principal: { id: "p1" },
+    guidance: "g",
+    speak: silent,
+  });
+  assert.equal((await agent.send("n1", "hi")).text, "Done.");
+});
+
 test("with no key, send refuses before anything is stored", async () => {
   const { source } = notes();
   const store = memoryChats();
