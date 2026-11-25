@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { z } from "zod";
 import {
   claudeAgent,
+  forModel,
   MODELS_KEPT_FOR,
   modelCatalogue,
   NoKey,
@@ -123,10 +124,10 @@ test("a message runs the Action as a tool and records each model call's tokens a
     "notes__add",
   );
   assert.deepEqual(seen[0]?.messages, [
+    { role: "user", content: "Subject: n1\n\nRemember milk" },
     {
-      role: "user",
-      content:
-        "You are Claude Opus 5.5 (model id claude-opus-5-5), running at medium effort.\n\nSubject: n1\n\nRemember milk",
+      role: "system",
+      content: "You are Claude Opus 5.5 (model id claude-opus-5-5), running at medium effort.",
     },
   ]);
   assert.doesNotMatch(JSON.stringify(seen[0]?.system), /running at/);
@@ -139,7 +140,7 @@ test("a message runs the Action as a tool and records each model call's tokens a
   assert.equal(spend.tokens.input, 2500);
   assert.ok(Math.abs(spend.cost - (costOf("claude-opus-5-5", spend.tokens) ?? -1)) < 1e-12);
   assert.equal(spend.byModel["claude-opus-5-5"]?.calls, 2);
-  assert.equal((await store.history("n1")).length, 4);
+  assert.equal((await store.history("n1")).length, 5);
 });
 
 test("the next message replays the stored history unchanged, and the system prompt stays the same when the model changes", async () => {
@@ -160,8 +161,9 @@ test("the next message replays the stored history unchanged, and the system prom
   settings = { model: "claude-sonnet-5-5", effort: "high" };
   await agent.send("n1", "two");
   assert.deepEqual(seen[1]?.system, seen[0]?.system);
-  assert.equal(seen[1]?.messages.length, 3);
-  assert.deepEqual(seen[1]?.messages[1], { role: "assistant", content: endTurn.content });
+  assert.equal(seen[1]?.messages.length, 5);
+  assert.deepEqual(seen[1]?.messages[2], { role: "assistant", content: endTurn.content });
+  assert.match(String(seen[1]?.messages[4]?.content), /Sonnet 5\.5/);
 });
 
 test("a task records its cost against the subject as a task turn", async () => {
@@ -199,6 +201,18 @@ test("the reply text comes from the final message when nothing streamed", async 
     speak: silent,
   });
   assert.equal((await agent.send("n1", "hi")).text, "Done.");
+});
+
+test("a model without mid-conversation system messages gets the app's note as a user message", () => {
+  const messages = [
+    { role: "user" as const, content: "hi" },
+    { role: "system" as const, content: "You are Claude Opus 4.7." },
+  ];
+  assert.deepEqual(forModel(messages, "claude-opus-5-5"), messages);
+  assert.deepEqual(forModel(messages, "claude-opus-4-7")[1], {
+    role: "user",
+    content: "Note from the app: You are Claude Opus 4.7.",
+  });
 });
 
 test("each model gets the request shape it accepts", () => {

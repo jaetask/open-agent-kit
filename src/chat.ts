@@ -14,6 +14,7 @@ export type ChatModel = {
   adaptive: boolean;
   fallback: boolean;
   dropMismatchedThinking: boolean;
+  systemMessages: boolean;
 };
 
 const ALL_EFFORTS: Effort[] = [...EFFORTS];
@@ -37,32 +38,40 @@ const model = (
   adaptive: true,
   fallback: false,
   dropMismatchedThinking: false,
+  systemMessages: false,
   ...more,
 });
 
 export const CHAT_MODELS: ChatModel[] = [
   model("claude-opus-5-5", "Opus 5.5", price(4, 20, 0.2, 5), {
+    systemMessages: true,
     fallback: true,
     dropMismatchedThinking: true,
   }),
   model("claude-fable-5-2", "Fable 5.2", price(8, 40, 0.2, 10)),
   model("claude-sonnet-5-5", "Sonnet 5.5", price(2, 10, 0.1, 2.5), {
+    systemMessages: true,
     fallback: true,
     dropMismatchedThinking: true,
   }),
   model("claude-haiku-5-5", "Haiku 5.5", price(0.1, 0.5, 0.01, 0.125), {
+    systemMessages: true,
     dropMismatchedThinking: true,
     overLongPrompt: { tokens: 100_000, perMillion: price(0.5, 2.5, 0.05, 0.625) },
   }),
   model("claude-fable-5-1", "Fable 5.1", price(10, 50, 0.25, 12.5), {
+    systemMessages: true,
     fallback: true,
     dropMismatchedThinking: true,
   }),
   model("claude-haiku-4-5", "Haiku 4.5", price(1, 5, 0.1, 1.25), { efforts: [], adaptive: false }),
   model("claude-sonnet-5", "Sonnet 5", price(2, 10, 0.2, 2.5)),
-  model("claude-opus-5", "Opus 5", price(5, 25, 0.5, 6.25), { fallback: true }),
-  model("claude-fable-5", "Fable 5", price(10, 50, 1, 12.5)),
-  model("claude-opus-4-8", "Opus 4.8", price(5, 25, 0.5, 6.25)),
+  model("claude-opus-5", "Opus 5", price(5, 25, 0.5, 6.25), {
+    fallback: true,
+    systemMessages: true,
+  }),
+  model("claude-fable-5", "Fable 5", price(10, 50, 1, 12.5), { systemMessages: true }),
+  model("claude-opus-4-8", "Opus 4.8", price(5, 25, 0.5, 6.25), { systemMessages: true }),
   model("claude-opus-4-7", "Opus 4.7", price(5, 25, 0.5, 6.25)),
   model("claude-opus-4-6", "Opus 4.6", price(5, 25, 0.5, 6.25), { efforts: NO_XHIGH }),
   model("claude-sonnet-4-6", "Sonnet 4.6", price(3, 15, 0.3, 3.75), { efforts: NO_XHIGH }),
