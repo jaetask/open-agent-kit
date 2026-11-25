@@ -277,6 +277,26 @@ test("the model catalogue keeps the built-in list until a sync, then orders the 
   assert.equal(calls, 2);
 });
 
+test("a failed call reads as one plain line and keeps the full error as detail", async () => {
+  const { source } = notes();
+  const failing: Speak = async () => {
+    throw new Error("400 invalid_request_error: something long and technical");
+  };
+  const agent = claudeAgent({
+    key: () => "k",
+    settings: () => DEFAULT_CHAT_SETTINGS,
+    store: memoryChats(),
+    source,
+    principal: { id: "p1" },
+    guidance: "g",
+    speak: failing,
+  });
+  const reply = await agent.send("n1", "hi");
+  assert.equal(reply.status, "failed");
+  assert.equal(reply.text, "Claude could not answer that message.");
+  assert.equal(reply.error, "400 invalid_request_error: something long and technical");
+});
+
 test("with no key, send refuses before anything is stored", async () => {
   const { source } = notes();
   const store = memoryChats();

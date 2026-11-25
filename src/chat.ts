@@ -138,6 +138,7 @@ export type ChatTurn = {
   at: string;
   status: "running" | "done" | "failed";
   steps: ChatStep[];
+  error?: string;
 };
 
 export type ModelSpend = { calls: number; tokens: Tokens; cost: number; unpriced: number };
