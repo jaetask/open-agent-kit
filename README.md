@@ -68,6 +68,8 @@ npm i @jaetask/open-agent-kit
 
 A git install (`npm i github:jaetask/open-agent-kit#<commit>`) builds the package on install.
 
+Each new version is published to npm by the `publish` workflow through npm trusted publishing, so no npm token is stored.
+
 The `/mcp` and `/app` entry points also need `@modelcontextprotocol/server` and `@modelcontextprotocol/client` 2.4.0; `/pi` needs `@earendil-works/pi-durable`, `pi-ai` and `chord` 1.5.2; `/claude` needs `@anthropic-ai/sdk` 1.14.0.
 
 ## Chat with Claude
