@@ -66,7 +66,11 @@ With Docker, from the repository root: `docker compose -f examples/notes/compose
 npm i @jaetask/open-agent-kit
 ```
 
-The `/mcp` and `/app` entry points also need `@modelcontextprotocol/server` and `@modelcontextprotocol/client` 2.4.0; `/pi` needs `@earendil-works/pi-durable`, `pi-ai` and `chord` 1.5.2.
+The `/mcp` and `/app` entry points also need `@modelcontextprotocol/server` and `@modelcontextprotocol/client` 2.4.0; `/pi` needs `@earendil-works/pi-durable`, `pi-ai` and `chord` 1.5.2; `/claude` needs `@anthropic-ai/sdk` 1.14.0.
+
+## Chat with Claude
+
+`/claude` gives an App a chat per subject (an article, a note) with Claude over the Anthropic API. `claudeAgent` turns the App's Actions into tools; every tool call goes through the Call pipeline with caller `agent`. A `ChatStore` (`memoryChats`, or `sqliteChats` from `/sqlite`) keeps each subject's turns, the model history, and for every model call the model, effort, timing, tokens and cost. `task` runs a one-off model call, such as a grade, and records its cost against the subject. `CHAT_MODELS` holds the price per million tokens for each model; `spend` sums cost by subject and since a date.
 
 ## Develop
 
@@ -93,6 +97,7 @@ Node 22.13 or later; the `/pi` entry point needs Node 22.19. `npm install` also 
 ## Software used
 
 - [@earendil-works/pi-durable](https://github.com/earendil-works/pi) 1.5.2 (MIT), with pi-ai and chord: agent runtime, behind the `/pi` adapter; optional peer dependencies.
+- [Anthropic TypeScript SDK](https://github.com/anthropics/anthropic-sdk-typescript) 1.14.0 (MIT): Claude, behind the `/claude` adapter; optional peer dependency.
 - machina: state machines and their visualisers.
 - [@jaetask/snap](https://github.com/jaetask/snap) (MIT): expect tests.
 - [Model Context Protocol](https://modelcontextprotocol.io) TypeScript SDK 2.4.0 (`@modelcontextprotocol/server` and `/client`, Apache-2.0): app to app communication, behind the `/mcp` adapter; optional peer dependencies.

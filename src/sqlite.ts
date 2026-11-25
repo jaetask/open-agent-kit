@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypt
 import type { DatabaseSync } from "node:sqlite";
 import type { Effect } from "./action.js";
 import type { Principal } from "./call.js";
+import { type ChatStore, type ChatTurn, spendOf } from "./chat.js";
 import { CONNECTION_MACHINE, type Connection, type Connections } from "./connection.js";
 import { next } from "./machine.js";
 import type { CallRecord, CallStore } from "./store.js";
@@ -148,5 +149,45 @@ export function sqliteConnections(db: DatabaseSync, now: () => number = Date.now
     },
     find,
     authenticate: async (credentials) => (await find(credentials))?.principal ?? null,
+  };
+}
+
+export function sqliteChats(db: DatabaseSync): ChatStore {
+  db.exec(
+    "CREATE TABLE IF NOT EXISTS kit_chat_turns (id TEXT PRIMARY KEY, subject TEXT NOT NULL, at TEXT NOT NULL, record TEXT NOT NULL)",
+  );
+  db.exec("CREATE INDEX IF NOT EXISTS kit_chat_turns_subject ON kit_chat_turns (subject, at)");
+  db.exec(
+    "CREATE TABLE IF NOT EXISTS kit_chat_histories (subject TEXT PRIMARY KEY, messages TEXT NOT NULL)",
+  );
+  const bySubject = db.prepare(
+    "SELECT record FROM kit_chat_turns WHERE subject = ? ORDER BY at, rowid",
+  );
+  const upsert = db.prepare(
+    "INSERT INTO kit_chat_turns (id, subject, at, record) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET record = excluded.record",
+  );
+  const history = db.prepare("SELECT messages FROM kit_chat_histories WHERE subject = ?");
+  const saveHistory = db.prepare(
+    "INSERT INTO kit_chat_histories (subject, messages) VALUES (?, ?) ON CONFLICT (subject) DO UPDATE SET messages = excluded.messages",
+  );
+  const spent = db.prepare(
+    "SELECT record FROM kit_chat_turns WHERE (?1 IS NULL OR subject = ?1) AND (?2 IS NULL OR at >= ?2)",
+  );
+  const turnsOf = (rows: unknown[]) =>
+    rows.map((row) => JSON.parse((row as { record: string }).record) as ChatTurn);
+  return {
+    turns: async (subject) => turnsOf(bySubject.all(subject)),
+    put: async (turn) => {
+      upsert.run(turn.id, turn.subject, turn.at, JSON.stringify(turn));
+    },
+    history: async (subject) => {
+      const row = history.get(subject) as { messages: string } | undefined;
+      return row ? JSON.parse(row.messages) : [];
+    },
+    setHistory: async (subject, messages) => {
+      saveHistory.run(subject, JSON.stringify(messages));
+    },
+    spend: async (query = {}) =>
+      spendOf(turnsOf(spent.all(query.subject ?? null, query.since ?? null))),
   };
 }

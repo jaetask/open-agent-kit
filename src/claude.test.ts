@@ -1,0 +1,209 @@
+import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
+import { test } from "node:test";
+import { z } from "zod";
+import { claudeAgent, NoKey, type Speak } from "./claude/index.js";
+import {
+  costOf,
+  createCalls,
+  DEFAULT_CHAT_SETTINGS,
+  defineAction,
+  defineDomain,
+  localSource,
+  memoryChats,
+  memoryStore,
+  monthStart,
+  provide,
+} from "./index.js";
+import { sqliteChats } from "./sqlite.js";
+
+function notes() {
+  const saved: string[] = [];
+  const domain = defineDomain({
+    name: "notes",
+    version: "1.0.0",
+    about: "Notes.",
+    actions: [
+      defineAction({
+        name: "add",
+        description: "Adds a note.",
+        effect: "write",
+        input: z.object({ text: z.string() }),
+        output: z.null(),
+        run: async ({ text }) => {
+          saved.push(text);
+          return null;
+        },
+      }),
+    ],
+  });
+  const calls = createCalls({ domains: [provide(domain, () => ({}))], store: memoryStore() });
+  return { saved, source: localSource(domain, calls) };
+}
+
+const usage = (input: number, output: number) => ({
+  input_tokens: input,
+  output_tokens: output,
+  cache_read_input_tokens: 1000,
+  cache_creation_input_tokens: 0,
+});
+
+function scripted(replies: object[]) {
+  const seen: Parameters<Speak>[1][] = [];
+  const speak: Speak = async (_key, params, onText) => {
+    seen.push(structuredClone(params));
+    const reply = replies.shift() as { content: { type: string; text?: string }[] };
+    for (const block of reply.content) if (block.type === "text") onText(block.text ?? "");
+    return reply as Awaited<ReturnType<Speak>>;
+  };
+  return { speak, seen };
+}
+
+const toolTurn = {
+  model: "claude-opus-5-5",
+  stop_reason: "tool_use",
+  usage: usage(2000, 100),
+  content: [
+    { type: "text", text: "Adding it." },
+    { type: "tool_use", id: "tu1", name: "notes__add", input: { text: "buy milk" } },
+  ],
+};
+const endTurn = {
+  model: "claude-opus-5-5",
+  stop_reason: "end_turn",
+  usage: usage(500, 50),
+  content: [{ type: "text", text: "Done." }],
+};
+
+test("costOf prices tokens by model and gives 0 for an unknown model", () => {
+  const tokens = { input: 1_000_000, output: 1_000_000, cacheRead: 1_000_000, cacheWrite: 0 };
+  assert.equal(costOf("claude-opus-5-5", tokens), 24.2);
+  assert.equal(costOf("someone-else", tokens), 0);
+});
+
+test("a message runs the Action as a tool and records each model call's tokens and cost", async () => {
+  const { saved, source } = notes();
+  const store = memoryChats();
+  const { speak, seen } = scripted([toolTurn, endTurn]);
+  const agent = claudeAgent({
+    key: () => "test-key",
+    settings: () => DEFAULT_CHAT_SETTINGS,
+    store,
+    source,
+    principal: { id: "p1" },
+    guidance: "You help with notes.",
+    context: async (subject) => `Subject: ${subject}`,
+    speak,
+  });
+  const reply = await agent.send("n1", "Remember milk");
+  assert.deepEqual(saved, ["buy milk"]);
+  assert.equal(reply.status, "done");
+  assert.equal(reply.text, "Adding it.\n\nDone.");
+  assert.deepEqual(
+    reply.steps.map((s) =>
+      s.kind === "model" ? `model ${s.stop}` : `tool ${s.action} ${s.state}`,
+    ),
+    ["model tool_use", "tool notes.add succeeded", "model end_turn"],
+  );
+  assert.equal(seen[0]?.model, "claude-opus-5-5");
+  assert.deepEqual(seen[0]?.output_config, { effort: "medium" });
+  assert.equal(
+    seen[0]?.tools?.[0] && "name" in seen[0].tools[0] && seen[0].tools[0].name,
+    "notes__add",
+  );
+  assert.deepEqual(seen[0]?.messages, [{ role: "user", content: "Subject: n1\n\nRemember milk" }]);
+  const spend = await store.spend({ subject: "n1" });
+  assert.equal(spend.calls, 2);
+  assert.equal(spend.tokens.input, 2500);
+  assert.ok(Math.abs(spend.cost - costOf("claude-opus-5-5", spend.tokens)) < 1e-12);
+  assert.equal((await store.history("n1")).length, 4);
+});
+
+test("the next message replays the stored history unchanged", async () => {
+  const { source } = notes();
+  const store = memoryChats();
+  const { speak, seen } = scripted([endTurn, endTurn]);
+  const agent = claudeAgent({
+    key: () => "k",
+    settings: () => DEFAULT_CHAT_SETTINGS,
+    store,
+    source,
+    principal: { id: "p1" },
+    guidance: "g",
+    speak,
+  });
+  await agent.send("n1", "one");
+  await agent.send("n1", "two");
+  assert.equal(seen[1]?.messages.length, 3);
+  assert.deepEqual(seen[1]?.messages[1], { role: "assistant", content: endTurn.content });
+});
+
+test("a task records its cost against the subject as a task turn", async () => {
+  const { source } = notes();
+  const store = memoryChats();
+  const { speak } = scripted([endTurn]);
+  const agent = claudeAgent({
+    key: () => "k",
+    settings: () => ({ model: "claude-sonnet-5-5", effort: "low" }),
+    store,
+    source,
+    principal: { id: "p1" },
+    guidance: "g",
+    speak,
+  });
+  assert.equal(
+    await agent.task({ subject: "n1", label: "Grade", system: "s", prompt: "p" }),
+    "Done.",
+  );
+  const [turn] = await store.turns("n1");
+  assert.equal(turn?.role, "task");
+  assert.equal((await store.spend()).calls, 1);
+});
+
+test("with no key, send refuses before anything is stored", async () => {
+  const { source } = notes();
+  const store = memoryChats();
+  const agent = claudeAgent({
+    key: () => null,
+    settings: () => DEFAULT_CHAT_SETTINGS,
+    store,
+    source,
+    principal: { id: "p1" },
+    guidance: "g",
+  });
+  await assert.rejects(agent.send("n1", "hi"), NoKey);
+  assert.deepEqual(await store.turns("n1"), []);
+});
+
+test("sqliteChats keeps turns and history, and sums spend by subject and month", async () => {
+  const store = sqliteChats(new DatabaseSync(":memory:"));
+  const step = (cost: number) => ({
+    kind: "model" as const,
+    model: "claude-opus-5-5",
+    effort: "medium" as const,
+    at: "",
+    ms: 1,
+    tokens: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 },
+    cost,
+    stop: "end_turn",
+  });
+  const turn = (id: string, subject: string, at: string, cost: number) => ({
+    id,
+    subject,
+    role: "assistant" as const,
+    text: "",
+    at,
+    status: "done" as const,
+    steps: [step(cost)],
+  });
+  await store.put(turn("a", "x", "2026-10-30T00:00:00.000Z", 1));
+  await store.put(turn("b", "x", "2026-11-02T00:00:00.000Z", 2));
+  await store.put(turn("c", "y", "2026-11-03T00:00:00.000Z", 4));
+  await store.setHistory("x", [{ role: "user", content: "hi" }]);
+  assert.deepEqual(await store.history("x"), [{ role: "user", content: "hi" }]);
+  assert.equal((await store.turns("x")).length, 2);
+  assert.equal((await store.spend({ subject: "x" })).cost, 3);
+  const since = monthStart(new Date("2026-11-25T12:00:00Z"));
+  assert.equal(since, "2026-11-01T00:00:00.000Z");
+  assert.equal((await store.spend({ since })).cost, 6);
+});
